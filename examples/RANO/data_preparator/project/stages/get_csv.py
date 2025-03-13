@@ -55,7 +55,7 @@ class AddToCSV(RowStage):
         return is_valid
 
     def execute(
-        self, index: Union[str, int], report: pd.DataFrame
+        self, index: Union[str, int], report: pd.DataFrame = None
     ) -> Tuple[pd.DataFrame, bool]:
         """Adds valid cases to the data csv that is used for later processing
         Invalid cases are flagged in the report
@@ -75,6 +75,10 @@ class AddToCSV(RowStage):
         # We will first copy the timepoint to the out folder
         # This is so, if successful, the csv will point to the data
         # in the next stage, instead of the previous
+        print(f"{subject_path=}")
+        print(f"{tp_path=}")
+        print(f"{subject_out_path=}")
+        print(f"{tp_out_path=}")
         shutil.rmtree(tp_out_path, ignore_errors=True)
         shutil.copytree(tp_path, tp_out_path)
 
@@ -119,7 +123,8 @@ class AddToCSV(RowStage):
                 success = False
 
         if success:
-            shutil.rmtree(tp_path)
+            pass
+            # shutil.rmtree(tp_path)
         else:
             shutil.rmtree(tp_out_path, ignore_errors=True)
 
@@ -129,4 +134,4 @@ class AddToCSV(RowStage):
 
         self.csv_processor.write()
 
-        return report, success
+        return tp_out_path

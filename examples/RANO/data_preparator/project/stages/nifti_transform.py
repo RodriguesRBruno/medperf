@@ -12,7 +12,12 @@ from .mlcube_constants import NIFTI_STAGE_STATUS
 
 class NIfTITransform(RowStage):
     def __init__(
-        self, data_csv: str, out_path: str, prev_stage_path: str, metadata_path: str, data_out: str,
+        self,
+        data_csv: str,
+        out_path: str,
+        prev_stage_path: str,
+        metadata_path: str,
+        data_out: str,
     ):
         self.data_csv = data_csv
         self.out_path = out_path
@@ -46,12 +51,14 @@ class NIfTITransform(RowStage):
         id, tp = get_id_tp(index)
         prev_case_path = os.path.join(self.prev_stage_path, id, tp)
         if os.path.exists(prev_case_path):
-            is_valid = len(os.listdir(prev_case_path)) > 0 
+            is_valid = len(os.listdir(prev_case_path)) > 0
             print(f"{is_valid}")
             return is_valid
         return False
 
-    def execute(self, index: Union[str, int], report: pd.DataFrame) -> pd.DataFrame:
+    def execute(
+        self, index: Union[str, int], report: pd.DataFrame = None
+    ) -> pd.DataFrame:
         """Executes the NIfTI transformation stage on the given case
 
         Args:
@@ -112,6 +119,9 @@ class NIfTITransform(RowStage):
     def __update_report(
         self, index: Union[str, int], report: pd.DataFrame
     ) -> pd.DataFrame:
+        if report is None:
+            return report, True
+
         id, tp = get_id_tp(index)
         failing = self.prep.failing_subjects
         failing_subject = failing[

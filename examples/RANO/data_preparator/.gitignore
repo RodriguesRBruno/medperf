@@ -5,8 +5,10 @@
 *.mat
 *.dcm
 *.png
-*/mlcube/workspace/*
+**/mlcube/workspace/*
 !requirements.txt
 !*/mlcube/workspace/parameters.yaml
 models
 tmpmodel
+**/dagster_home/*
+!**/dagster_home/dagster.yaml
