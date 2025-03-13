@@ -10,5 +10,6 @@
 !*/mlcube/workspace/parameters.yaml
 models
 tmpmodel
-**/dagster_home/*
+**/dagster_home*/*
 !**/dagster_home/dagster.yaml
+!**/dagster_home/workspace.yaml

@@ -14,9 +14,9 @@ RUN pip install uv && \
         uv pip install git+https://github.com/mlcommons/GaNDLF@616b37bafad8f89d5c816a88f44fa30470601311
 
 # # Copy relevant dagster code
-COPY ./dagster_assets.py /project/dagster_assets.py
-COPY ./dagster_home/dagster.yaml /project/dagster_home/
+COPY ./dagster_files /project/dagster_files
+COPY ./dagster_home /project/dagster_home
 
 EXPOSE 3000
 
-ENTRYPOINT ["dagster", "dev", "-f", "/project/dagster_assets.py", "-h", "0.0.0.0", "-p", "3000"]
+ENTRYPOINT ["dagster", "dev", "-w", "/project/dagster_home/workspace.yaml", "-h", "0.0.0.0", "-p", "3000"]
