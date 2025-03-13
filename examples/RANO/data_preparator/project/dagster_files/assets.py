@@ -21,12 +21,26 @@ input_dir = os.path.join(workspace_dir, "input_data")
 
 
 @asset(partitions_def=subjects_partitions_def, code_version="0.0.1")
-def make_csv(context: dg.AssetExecutionContext):
+def make_partitions(context: dg.AssetExecutionContext):
+    """
+    First execution from the sensors only creates the partitions; following executions (ie the actual pipeline)
+    will then be aggregated in the UI.
+    """
+    subject_partition = context.partition_key
+    return subject_partition
+
+
+@asset(
+    partitions_def=subjects_partitions_def,
+    code_version="0.0.1",
+    automation_condition=dg.AutomationCondition.eager(),
+)
+def make_csv(context: dg.AssetExecutionContext, make_partitions):
     from project.stages.get_csv import (
         AddToCSV,
     )
 
-    subject_subdir = context.partition_key
+    subject_subdir = make_partitions
     output_csv_dir = os.path.join(data_dir, "csv", subject_subdir)
     os.makedirs(output_csv_dir, exist_ok=True)
     output_csv = os.path.join(output_csv_dir, "data.csv")
@@ -89,7 +103,7 @@ def _get_subdirs(input_directory: str) -> list[str]:
 
 @sensor(
     asset_selection=AssetSelection.keys(
-        make_csv.key,
+        make_partitions.key,
     ),
     default_status=dg.DefaultSensorStatus.RUNNING,
 )
