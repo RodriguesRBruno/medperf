@@ -103,7 +103,7 @@ def _get_subdirs(input_directory: str) -> list[str]:
 
 @sensor(
     asset_selection=AssetSelection.keys(
-        make_partitions.key,
+        make_partitions.key, make_csv.key, convert_nifti.key
     ),
     default_status=dg.DefaultSensorStatus.RUNNING,
 )
