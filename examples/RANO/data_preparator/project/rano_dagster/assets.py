@@ -5,8 +5,6 @@ from dagster import (
     SensorResult,
     RunRequest,
     AssetSelection,
-    Output,
-    DataVersion,
     AssetKey,
 )
 import dagster as dg
@@ -19,6 +17,13 @@ subjects_partitions_def = DynamicPartitionsDefinition(name="subjects_timepoints"
 workspace_dir = os.getenv("WORKSPACE_DIRECTORY")
 data_dir = os.path.join(workspace_dir, "data")
 input_dir = os.path.join(workspace_dir, "input_data")
+root_preparator_dir = os.getenv("ROOT_PREP_DIR")
+
+
+def _mount_helper(host_dirs: list[str], container_dirs: list[str]):
+    host_dir = os.path.join(root_preparator_dir, *host_dirs)
+    container_dir = os.path.join(*container_dirs)
+    return f"{host_dir}:{container_dir}"
 
 
 def _run_rano_docker(
@@ -35,9 +40,14 @@ def _run_rano_docker(
         context=context,
         container_kwargs={
             "volumes": [
-                "/Users/brunorodrigues/MLCommons/medperf/examples/RANO/data_preparator/mlcube/workspace:/workspace",
-                "/Users/brunorodrigues/MLCommons/medperf/examples/RANO/data_preparator/project/dagster_home:/project/dagster_home",
-                "/Users/brunorodrigues/MLCommons/medperf/examples/RANO/data_preparator/project:/project",
+                _mount_helper(
+                    host_dirs=["mlcube", "workspace"], container_dirs=["/", "workspace"]
+                ),
+                _mount_helper(
+                    host_dirs=["project", "dagster_home"],
+                    container_dirs=["/", "project", "dagster_home"],
+                ),
+                _mount_helper(host_dirs=["project"], container_dirs=["/", "project"]),
             ],
         },
     ).get_results()
