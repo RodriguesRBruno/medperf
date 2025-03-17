@@ -5,6 +5,7 @@ from functools import reduce
 from pathlib import Path
 import hashlib
 
+
 # Taken from https://code.activestate.com/recipes/577879-create-a-nested-dictionary-from-oswalk/
 def get_directory_structure(rootdir):
     """
@@ -24,8 +25,13 @@ def get_directory_structure(rootdir):
 def has_prepared_folder_structure(data_path, labels_path) -> bool:
     data_struct = list(get_directory_structure(data_path).values())[0]
     labels_struct = list(get_directory_structure(labels_path).values())[0]
-    
-    expected_data_files = ["brain_t1c.nii.gz", "brain_t1n.nii.gz", "brain_t2f.nii.gz", "brain_t2w.nii.gz"]
+
+    expected_data_files = [
+        "brain_t1c.nii.gz",
+        "brain_t1n.nii.gz",
+        "brain_t2f.nii.gz",
+        "brain_t2w.nii.gz",
+    ]
     expected_labels_files = ["final_seg.nii.gz"]
 
     if "splits.csv" not in data_struct:
@@ -36,8 +42,12 @@ def has_prepared_folder_structure(data_path, labels_path) -> bool:
             # This is a file, ignore
             continue
         for tp in data_struct[id].keys():
-            expected_subject_data_files = set(["_".join([id, tp, file]) for file in expected_data_files])
-            expected_subject_labels_files = set(["_".join([id, tp, file]) for file in expected_labels_files])
+            expected_subject_data_files = set(
+                ["_".join([id, tp, file]) for file in expected_data_files]
+            )
+            expected_subject_labels_files = set(
+                ["_".join([id, tp, file]) for file in expected_labels_files]
+            )
 
             found_data_files = set(data_struct[id][tp].keys())
             found_labels_files = set(labels_struct[id][tp].keys())
@@ -69,6 +79,7 @@ def normalize_path(path: str) -> str:
     # In case the path has already been normalized
     return path
 
+
 def unnormalize_path(path: str, parent: str) -> str:
     """Add back mlcube-specific components to the given path
 
@@ -82,13 +93,17 @@ def unnormalize_path(path: str, parent: str) -> str:
         path = path[1:]
     return os.path.join(parent, path)
 
+
 def update_row_with_dict(df, d, idx):
+    if df is None:
+        return
+
     for key in d.keys():
         df.loc[idx, key] = d.get(key)
 
 
 def get_id_tp(index: str):
-    return index.split("|")
+    return index.split(os.sep)
 
 
 def set_files_read_only(path):
@@ -142,7 +157,7 @@ def md5_dir(directory):
 
 
 def md5_file(filepath):
-    return hashlib.md5(open(filepath,'rb').read()).hexdigest()
+    return hashlib.md5(open(filepath, "rb").read()).hexdigest()
 
 
 class MockTqdm(tqdm):
