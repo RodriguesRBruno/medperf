@@ -51,8 +51,8 @@ class ExtractNnUNet(Extract):
         prev_stage_path: str,
         prev_subpath: str,
         status_code: int,
-        extra_labels_path=[],
-        nnunet_executable: str = "/nnunet_env/bin/nnUNet_predict"
+        extra_labels_path=None,
+        nnunet_executable: str = "/nnunet_env/bin/nnUNet_predict",
     ):
         self.data_csv = data_csv
         self.out_path = out_path
@@ -66,7 +66,7 @@ class ExtractNnUNet(Extract):
         self.failed = False
         self.exception = None
         self.__status_code = status_code
-        self.extra_labels_path = extra_labels_path
+        self.extra_labels_path = extra_labels_path or []
         self.nnunet_executable = nnunet_executable
 
     @property
@@ -82,7 +82,13 @@ class ExtractNnUNet(Extract):
         return os.listdir(models_path)
 
     def __get_mod_order(self, model):
-        order_path = os.path.join(os.environ["RESULTS_FOLDER"], os.pardir, "nnUNet_modality_order", model, "order")
+        order_path = os.path.join(
+            os.environ["RESULTS_FOLDER"],
+            os.pardir,
+            "nnUNet_modality_order",
+            model,
+            "order",
+        )
         with open(order_path, "r") as f:
             order_str = f.readline()
         # remove 'order = ' from the splitted list
@@ -94,8 +100,8 @@ class ExtractNnUNet(Extract):
         tmp_subject = f"{id}-{tp}"
         tmp_path = os.path.join(path, "tmp-data")
         tmp_subject_path = os.path.join(tmp_path, tmp_subject)
-        tmp_out_path = os.path.join(path, "tmp-out")
-        shutil.rmtree(tmp_path, ignore_errors=True)
+        tmp_out_path = os.path.join(path, "tmp-out", tmp_subject)
+        shutil.rmtree(tmp_subject_path, ignore_errors=True)
         shutil.rmtree(tmp_out_path, ignore_errors=True)
         os.makedirs(tmp_subject_path)
         os.makedirs(tmp_out_path)

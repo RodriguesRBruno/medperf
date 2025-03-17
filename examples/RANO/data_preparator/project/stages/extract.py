@@ -21,7 +21,7 @@ class Extract(RowStage):
         # pbar: tqdm,
         func_name: str,
         status_code: int,
-        extra_labels_path=[],
+        extra_labels_path=None,
     ):
         self.data_csv = data_csv
         self.out_path = out_path
@@ -37,7 +37,7 @@ class Extract(RowStage):
         self.failed = False
         self.exception = None
         self.__status_code = status_code
-        self.extra_labels_path = extra_labels_path
+        self.extra_labels_path = extra_labels_path or []
 
     @property
     def name(self) -> str:
@@ -64,7 +64,7 @@ class Extract(RowStage):
         return is_valid
 
     def execute(
-        self, index: Union[str, int], report: pd.DataFrame
+        self, index: Union[str, int], report: pd.DataFrame = None
     ) -> Tuple[pd.DataFrame, bool]:
         """Executes the NIfTI transformation stage on the given case
 
@@ -111,7 +111,16 @@ class Extract(RowStage):
             row = row_search.iloc[0]
         else:
             # Most probably this case was semi-prepared. Mock a row
-            row = pd.Series({"SubjectID": id, "Timepoint": tp, "T1": "", "T1GD": "", "T2": "", "FLAIR": ""})
+            row = pd.Series(
+                {
+                    "SubjectID": id,
+                    "Timepoint": tp,
+                    "T1": "",
+                    "T1GD": "",
+                    "T2": "",
+                    "FLAIR": "",
+                }
+            )
         self.func(row, self.pbar)
 
     def __hide_paths(self, hide_paths):
