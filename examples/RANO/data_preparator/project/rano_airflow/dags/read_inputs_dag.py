@@ -19,6 +19,13 @@ with DAG(
     is_paused_upon_creation=False,
 ) as dag:
 
+    def _create_run_id(subject_slash_timepoint):
+        import re
+
+        legal_chars = "A-Za-z0-9_.~:+-"
+        legal_id = re.sub(rf"[^{legal_chars}]", "_", subject_slash_timepoint)
+        return legal_id
+
     @task
     def read_subject_directories():
         subject_id_timepoint_directories = []
@@ -30,16 +37,18 @@ with DAG(
                 subject_id_timepoint_dir = os.path.join(subject_id_dir, timepoint_dir)
                 subject_id_timepoint_directories.append(subject_id_timepoint_dir)
 
-        as_conf = [
-            {"subject_subdir": subdir} for subdir in subject_id_timepoint_directories
-        ]
-        print(f"{as_conf=}")
-        return as_conf
+        expand_args = []
+        for subject_id_timepoint in subject_id_timepoint_directories:
+            this_config = {
+                "conf": {"subject_subdir": subject_id_timepoint},
+                "trigger_run_id": _create_run_id(subject_id_timepoint),
+            }
+            expand_args.append(this_config)
 
-    subject_id_dirs = read_subject_directories()
+        return expand_args
+
+    subject_id_configs = read_subject_directories()
 
     run_dags = TriggerDagRunOperator.partial(
         task_id="run_rano_pipeline", trigger_dag_id="rano_pipeline"
-    ).expand(
-        conf=subject_id_dirs,
-    )
+    ).expand_kwargs(subject_id_configs)
