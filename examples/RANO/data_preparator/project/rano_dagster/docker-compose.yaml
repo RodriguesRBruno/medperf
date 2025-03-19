@@ -1,0 +1,16 @@
+services:
+  dagster:
+    image: ${DAGSTER_IMAGE_NAME}
+    build: .
+    environment:
+      WORKSPACE_DIRECTORY: /workspace
+      DAGSTER_INPUT_DATA_DIR: /input_data
+      ROOT_PREP_DIR: ${ROOT_PREP_DIR}
+      
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - ${WORKSPACE_DIRECTORY}:/workspace
+      - ${INPUT_DATA_DIR}:/input_data
+      - ${DAGSTER_HOST_HOME}:/project/dagster_home
+    ports:
+      - "3000:3000"

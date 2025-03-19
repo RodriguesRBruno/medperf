@@ -15,13 +15,13 @@ from dagster_docker import PipesDockerClient
 subjects_partitions_def = DynamicPartitionsDefinition(name="subjects_timepoints")
 
 workspace_dir = os.getenv("WORKSPACE_DIRECTORY")
+project_dir = os.getenv("PROJECT_DIRECTORY")
 data_dir = os.path.join(workspace_dir, "data")
-input_dir = os.path.join(workspace_dir, "input_data")
-root_preparator_dir = os.getenv("ROOT_PREP_DIR")
+input_dir = os.getenv("DAGSTER_INPUT_DATA_DIR")
 
 
 def _mount_helper(host_dirs: list[str], container_dirs: list[str]):
-    host_dir = os.path.join(root_preparator_dir, *host_dirs)
+    host_dir = os.path.join(*host_dirs)
     container_dir = os.path.join(*container_dirs)
     return f"{host_dir}:{container_dir}"
 
@@ -41,13 +41,14 @@ def _run_rano_docker(
         container_kwargs={
             "volumes": [
                 _mount_helper(
-                    host_dirs=["mlcube", "workspace"], container_dirs=["/", "workspace"]
+                    host_dirs=[workspace_dir], container_dirs=["/", "workspace"]
                 ),
+                # TODO remove these after finalizing docker image
                 _mount_helper(
-                    host_dirs=["project", "dagster_home"],
+                    host_dirs=[project_dir, "dagster_home"],
                     container_dirs=["/", "project", "dagster_home"],
                 ),
-                _mount_helper(host_dirs=["project"], container_dirs=["/", "project"]),
+                _mount_helper(host_dirs=[project_dir], container_dirs=["/", "project"]),
             ],
         },
     ).get_results()
