@@ -1,3 +1,4 @@
 apache-airflow==2.10.5
 apache-airflow-providers-docker==4.2.1
 apache-airflow-providers-singularity==3.7.1
+requests==2.32.3
