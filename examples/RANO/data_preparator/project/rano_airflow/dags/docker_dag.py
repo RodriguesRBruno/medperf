@@ -8,11 +8,12 @@ from airflow.models.param import Param
 
 from docker.types import Mount
 
-root_preparator_dir = os.getenv("ROOT_PREP_DIR")
+workspace_host_dir = os.getenv("WORKSPACE_DIRECTORY")
+project_dir = os.getenv("PROJECT_DIRECTORY")
 
 
 def _mount_helper(host_dirs: list[str], container_dirs: list[str]):
-    host_dir = os.path.join(root_preparator_dir, *host_dirs)
+    host_dir = os.path.join(*host_dirs)
     container_dir = os.path.join(*container_dirs)
     return Mount(source=host_dir, target=container_dir, type="bind")
 
@@ -20,9 +21,10 @@ def _mount_helper(host_dirs: list[str], container_dirs: list[str]):
 def _docker_operator_factory(command_name: str, *command_args: str) -> DockerOperator:
     mounts = [
         _mount_helper(
-            host_dirs=["mlcube", "workspace"], container_dirs=["/", "workspace"]
+            host_dirs=[workspace_host_dir], container_dirs=["/", "workspace"]
         ),
-        _mount_helper(host_dirs=["project"], container_dirs=["/", "project"]),
+        # TODO remove this after adjusting Docker image
+        _mount_helper(host_dirs=[project_dir], container_dirs=["/", "project"]),
     ]
 
     return DockerOperator(
