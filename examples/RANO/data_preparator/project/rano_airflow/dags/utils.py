@@ -42,10 +42,13 @@ def make_pipeline_for_subject(subject_subdir):
         prev_task = curr_task
 
 
-def create_legal_id(subject_slash_timepoint):
+def create_legal_id(subject_slash_timepoint, restrictive=False):
     import re
 
-    legal_chars = "A-Za-z0-9_.~:+-"
+    if restrictive:
+        legal_chars = "A-Za-z0-9_-"
+    else:
+        egal_chars = "A-Za-z0-9_.~:+-"
     legal_id = re.sub(rf"[^{legal_chars}]", "_", subject_slash_timepoint)
     return legal_id
 
