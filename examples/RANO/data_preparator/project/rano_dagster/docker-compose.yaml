@@ -12,5 +12,6 @@ services:
       - ${WORKSPACE_DIRECTORY}:/workspace
       - ${INPUT_DATA_DIR}:/input_data
       - ${DAGSTER_HOST_HOME}:/project/dagster_home
+      - ${DAGSTER_HOST_HOME}/..:/project
     ports:
       - "3000:3000"
