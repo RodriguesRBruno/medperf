@@ -15,15 +15,32 @@ with DAG(
 ) as dag:
 
     start = EmptyOperator(task_id="start")
-    end = EmptyOperator(task_id="some_dataset_stage")
 
-    all_task_groups = []
-    for subject_subdir in _SUBJECT_SUBDIRS:
-        subject_id = create_legal_id(subject_subdir, restrictive=True)
+    with TaskGroup(
+        group_id="finalizing_dataset_stages", tooltip="Final processing stages"
+    ) as dataset_stages:
 
-        with TaskGroup(
-            subject_id, tooltip=f"Tasks for Subject {subject_subdir}"
-        ) as this_task_group:
-            make_pipeline_for_subject(subject_subdir)
+        confirmation = EmptyOperator(
+            task_id="confirmation_stage", task_display_name="Confirmation"
+        )
+        consolidation = EmptyOperator(
+            task_id="consolidation_stage",
+            task_display_name="Consolidation",
+            doc_md="Does the train/test split and saves to csv files.",
+        )
 
-        start >> this_task_group >> end
+        confirmation >> consolidation
+
+    with TaskGroup(
+        group_id="processing_all_subjects",
+        tooltip="Processing tasks for all subjects",
+    ) as all_subjects_group:
+        for subject_subdir in _SUBJECT_SUBDIRS:
+            subject_id = create_legal_id(subject_subdir, restrictive=True)
+
+            with TaskGroup(
+                subject_id, tooltip=f"Tasks for Subject {subject_subdir}"
+            ) as this_task_group:
+                make_pipeline_for_subject(subject_subdir)
+
+            start >> this_task_group >> dataset_stages
