@@ -1,9 +1,12 @@
 from __future__ import annotations
-from airflow.decorators import task_group
 from airflow.models.dag import DAG
-from airflow.operators.empty import EmptyOperator
 from airflow.utils.task_group import TaskGroup
-from utils import make_pipeline_for_subject, read_subject_directories, create_legal_id
+from utils import (
+    make_pipeline_for_subject,
+    read_subject_directories,
+    create_legal_id,
+    dummy_operator_factory,
+)
 
 _SUBJECT_SUBDIRS = read_subject_directories()
 
@@ -14,25 +17,23 @@ with DAG(
     is_paused_upon_creation=False,
 ) as dag:
 
-    start = EmptyOperator(task_id="start")
-
     with TaskGroup(
         group_id="finalizing_dataset_stages", tooltip="Final processing stages"
     ) as dataset_stages:
 
-        confirmation = EmptyOperator(
-            task_id="confirmation_stage", task_display_name="Confirmation"
+        confirmation = dummy_operator_factory(
+            dummy_id="confirmation_stage", dummy_display_name="DUMMY Confirmation"
         )
-        consolidation = EmptyOperator(
-            task_id="consolidation_stage",
-            task_display_name="Consolidation",
-            doc_md="Does the train/test split and saves to csv files.",
+
+        consolidation = dummy_operator_factory(
+            dummy_id="consolidation_stage",
+            dummy_display_name="DUMMY Consolidation",
         )
 
         confirmation >> consolidation
 
     with TaskGroup(
-        group_id="processing_all_subjects",
+        group_id="Processing_All_Subjects",
         tooltip="Processing tasks for all subjects",
     ) as all_subjects_group:
         for subject_subdir in _SUBJECT_SUBDIRS:
@@ -43,4 +44,4 @@ with DAG(
             ) as this_task_group:
                 make_pipeline_for_subject(subject_subdir)
 
-            start >> this_task_group >> dataset_stages
+            this_task_group >> dataset_stages

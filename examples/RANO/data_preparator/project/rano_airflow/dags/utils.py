@@ -1,5 +1,6 @@
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.singularity.operators.singularity import SingularityOperator
+from airflow.operators.empty import EmptyOperator
 from docker.types import Mount
 import os
 
@@ -31,14 +32,30 @@ def _docker_operator_factory(command_name: str, *command_args: str) -> DockerOpe
     )
 
 
+def dummy_operator_factory(
+    dummy_id: str,
+    dummy_display_name: str = None,
+    doc_md="STAGE NOT YET IMPLEMENTED, DUMMY FOR DEMO PURPOSES",
+):
+    dummy_display_name = dummy_display_name or f"DUMMY {dummy_id}"
+    return EmptyOperator(
+        task_id=dummy_id, task_display_name=dummy_display_name, doc_md=doc_md
+    )
+
+
 def make_pipeline_for_subject(subject_subdir):
     _PIPELINE_STAGES = ["make_csv", "convert_nifti", "extract_brain", "extract_tumor"]
-
+    _UNIMPLEMENTED_STAGES = ["manual_annotation", "segment_comparison"]
     prev_task = None
     for stage in _PIPELINE_STAGES:
         curr_task = _docker_operator_factory(stage, "--subject-subdir", subject_subdir)
         if prev_task is not None:
             prev_task >> curr_task
+        prev_task = curr_task
+
+    for unimplemented_stage in _UNIMPLEMENTED_STAGES:
+        curr_task = dummy_operator_factory(unimplemented_stage)
+        prev_task >> curr_task
         prev_task = curr_task
 
 
