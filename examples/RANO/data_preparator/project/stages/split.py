@@ -5,8 +5,9 @@ from typing import List
 import math
 
 from .dset_stage import DatasetStage
-from .utils import get_id_tp, cleanup_storage
+from .utils import get_id_tp, cleanup_storage, get_subdirectories
 from .mlcube_constants import DONE_STAGE_STATUS
+from .constants import INTERIM_FOLDER, TUMOR_MASK_FOLDER
 
 
 def row_to_path(row: pd.Series) -> str:
@@ -22,6 +23,7 @@ class SplitStage(DatasetStage):
         data_path: str,
         labels_path: str,
         staging_folders: List[str],
+        base_finalized_dir: str,
     ):
         self.params = params
         self.data_path = data_path
@@ -30,6 +32,7 @@ class SplitStage(DatasetStage):
         self.train_csv_path = os.path.join(data_path, "train.csv")
         self.val_csv_path = os.path.join(data_path, "val.csv")
         self.staging_folders = staging_folders
+        self.base_finalized_dir = base_finalized_dir
 
     @property
     def name(self) -> str:
@@ -59,21 +62,51 @@ class SplitStage(DatasetStage):
         return True
 
     def __report_success(self, report: pd.DataFrame) -> pd.DataFrame:
+        if report is None:
+            return
+
         report["status"] = self.status_code
 
         return report
 
-    def execute(self, report: pd.DataFrame) -> pd.DataFrame:
+    def _find_finalized_subjects(self):
+        subject_and_timepoint_list = []
+
+        candidate_subjects = get_subdirectories(self.base_finalized_dir)
+        for candidate_subject in candidate_subjects:
+            subject_path = os.path.join(self.base_finalized_dir, candidate_subject)
+            timepoint_dirs = get_subdirectories(subject_path)
+
+            for timepoint in timepoint_dirs:
+                timepoint_complete_path = os.path.join(subject_path, timepoint)
+                finalized_path = os.path.join(
+                    timepoint_complete_path, TUMOR_MASK_FOLDER, "finalized"
+                )
+                try:
+                    path_exists = os.path.exists(finalized_path)
+                    path_is_dir = os.path.isdir(finalized_path)
+                    only_one_case = len(os.listdir(finalized_path)) == 1
+                    if path_exists and path_is_dir and only_one_case:
+                        subject_timepoint_dict = {
+                            "SubjectID": candidate_subject,
+                            "Timepoint": timepoint,
+                        }
+                        subject_and_timepoint_list.append(subject_timepoint_dict)
+                except (FileNotFoundError, OSError):
+                    pass
+        return subject_and_timepoint_list
+
+    def execute(self, report: pd.DataFrame = None) -> pd.DataFrame:
         with open(self.params, "r") as f:
             params = yaml.safe_load(f)
 
         seed = params["seed"]
         train_pct = params["train_percent"]
 
-        split_df = report.copy(deep=True)
-        split_df["SubjectID"] = split_df.index.str.split("|").str[0]
-        split_df["Timepoint"] = split_df.index.str.split("|").str[1]
-        split_df = split_df[["SubjectID", "Timepoint"]].reset_index(drop=True)
+        finalized_subjects = self._find_finalized_subjects()
+        print(f"{finalized_subjects=}")
+        split_df = pd.DataFrame(finalized_subjects)
+        print(split_df)
         subjects = split_df["SubjectID"].drop_duplicates()
         subjects = subjects.sample(frac=1, random_state=seed)
         train_size = math.floor(len(subjects) * train_pct)

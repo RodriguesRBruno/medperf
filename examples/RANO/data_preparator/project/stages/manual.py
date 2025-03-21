@@ -72,6 +72,9 @@ class ManualStage(RowStage):
     def __report_success(
         self, index: Union[str, int], report: pd.DataFrame
     ) -> pd.DataFrame:
+        if report is None:
+            return
+
         labels_path = self.__get_output_path(index)
         data_path = report.loc[index, "data_path"]
         report_data = {
@@ -85,6 +88,9 @@ class ManualStage(RowStage):
     def __report_step_missing(
         self, index: Union[str, int], report: pd.DataFrame
     ) -> pd.DataFrame:
+        if report is None:
+            return
+
         in_path, _ = self.__get_input_paths(index)
         data_path = report.loc[index, "data_path"]
 
@@ -99,6 +105,8 @@ class ManualStage(RowStage):
     def __report_multiple_cases_error(
         self, index: Union[str, int], report: pd.DataFrame, cases: list
     ) -> pd.DataFrame:
+        if report is None:
+            return
         path = self.__get_output_path(index)
         data_path = report.loc[index, "data_path"]
 
@@ -106,8 +114,8 @@ class ManualStage(RowStage):
             "status": -self.status_code - 0.1,  # -5.1
             "data_path": data_path,
             "labels_path": path,
-            "comment": f"Multiple files were identified in the labels path: {cases}. " \
-            + "Please ensure that there is only the manually corrected segmentation file."
+            "comment": f"Multiple files were identified in the labels path: {cases}. "
+            + "Please ensure that there is only the manually corrected segmentation file.",
         }
         update_row_with_dict(report, report_data, index)
         return report
@@ -172,11 +180,13 @@ class ManualStage(RowStage):
         segmentation_exists = os.path.exists(in_path)
         annotation_exists = len(cases) == 1
         brain_mask_changed = brain_mask_hash != expected_brain_mask_hash
-        print(f"{segmentation_exists=} and (not {annotation_exists=} or {brain_mask_changed=})")
+        print(
+            f"{segmentation_exists=} and (not {annotation_exists=} or {brain_mask_changed=})"
+        )
         return segmentation_exists and (not annotation_exists or brain_mask_changed)
 
     def execute(
-        self, index: Union[str, int], report: pd.DataFrame
+        self, index: Union[str, int], report: pd.DataFrame = None
     ) -> Tuple[pd.DataFrame, bool]:
         """Manual steps are by definition not doable by an algorithm. Therefore,
         execution of this step leads to a failed stage message, indicating that
@@ -206,8 +216,12 @@ class ManualStage(RowStage):
         brain_mask_hash = ""
         if os.path.exists(brain_path):
             brain_mask_hash = md5_file(brain_path)
-        expected_brain_mask_hash = report.loc[index, "brain_mask_hash"]
-        brain_mask_changed = brain_mask_hash != expected_brain_mask_hash
+
+        if report is not None:
+            expected_brain_mask_hash = report.loc[index, "brain_mask_hash"]
+            brain_mask_changed = brain_mask_hash != expected_brain_mask_hash
+        else:
+            brain_mask_changed = False  # TODO formally implement this check!!
 
         if brain_mask_changed:
             # Found brain mask changed

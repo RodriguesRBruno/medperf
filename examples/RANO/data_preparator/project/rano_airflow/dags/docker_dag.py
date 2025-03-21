@@ -14,6 +14,6 @@ with DAG(
     params={
         "subject_subdir": Param("XXXX/YYYY.MM.DD", type="string"),
     },
-    is_paused_upon_creation=False,
+    is_paused_upon_creation=True,
 ) as dag:
     make_pipeline_for_subject("{{ params.subject_subdir}}")

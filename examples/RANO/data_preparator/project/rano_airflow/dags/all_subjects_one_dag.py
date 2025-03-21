@@ -1,12 +1,15 @@
 from __future__ import annotations
 from airflow.models.dag import DAG
 from airflow.utils.task_group import TaskGroup
+from airflow.utils.trigger_rule import TriggerRule
 from utils import (
     make_pipeline_for_subject,
     read_subject_directories,
     create_legal_id,
     dummy_operator_factory,
+    docker_operator_factory,
 )
+from datetime import datetime
 
 _SUBJECT_SUBDIRS = read_subject_directories()
 
@@ -14,20 +17,25 @@ with DAG(
     dag_id="rano_pipeline_all_subjects",
     dag_display_name="RANO Pipeline - All Subjects",
     catchup=True,
-    is_paused_upon_creation=False,
+    max_active_runs=1,
+    schedule="@once",
+    start_date=datetime(2024, 1, 1),
+    is_paused_upon_creation=True,
 ) as dag:
 
     with TaskGroup(
-        group_id="finalizing_dataset_stages", tooltip="Final processing stages"
+        group_id="finalizing_dataset_stages",
+        tooltip="Final processing stages",
+        default_args={"trigger_rule": TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS},
     ) as dataset_stages:
 
         confirmation = dummy_operator_factory(
             dummy_id="confirmation_stage", dummy_display_name="DUMMY Confirmation"
         )
 
-        consolidation = dummy_operator_factory(
-            dummy_id="consolidation_stage",
-            dummy_display_name="DUMMY Consolidation",
+        consolidation = docker_operator_factory(
+            "consolidation_stage",
+            task_display_name="Consolidation Stage",
         )
 
         confirmation >> consolidation

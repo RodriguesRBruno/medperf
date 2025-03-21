@@ -13,7 +13,7 @@ with DAG(
     max_active_runs=1,
     schedule="@once",
     start_date=datetime(2024, 1, 1),
-    is_paused_upon_creation=False,
+    is_paused_upon_creation=True,
 ) as dag:
 
     @task

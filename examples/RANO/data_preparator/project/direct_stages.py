@@ -10,8 +10,9 @@ from stages.mlcube_constants import (
     TUMOR_PATH,
     BRAIN_STAGE_STATUS,
     TUMOR_STAGE_STATUS,
+    TUMOR_BACKUP_PATH,
 )
-from stages.constants import INTERIM_FOLDER, FINAL_FOLDER
+from stages.constants import INTERIM_FOLDER
 
 app = typer.Typer()
 
@@ -129,6 +130,72 @@ def extract_tumor(
     )
     tumor_extract.execute(subject_subdir)
     print(output_path)
+
+
+@app.command("manual_annotation")
+def manual_annotation(
+    subject_subdir: str = typer.Option(..., "--subject-subdir"),
+):
+    # TODO formally implement/integrate with existing RANO tool! Currently just moves existing masks into finalized dir
+    import shutil
+    from stages.utils import copy_files
+
+    prev_stage_segmentation_dir = os.path.join(
+        DATA_DIR, TUMOR_PATH, "DataForQC", subject_subdir, "TumorMasksForQC"
+    )
+    finalized_dir = os.path.join(prev_stage_segmentation_dir, "finalized")
+    print(f"{prev_stage_segmentation_dir=}")
+    print(f"{finalized_dir=}")
+    if os.path.exists(finalized_dir):
+        print("finalized dir exists, deleting...")
+        shutil.rmtree(finalized_dir, ignore_errors=True)
+    copy_files(prev_stage_segmentation_dir, finalized_dir)
+
+    from stages.manual import ManualStage
+
+    csv_path = _get_data_csv_filepath(subject_subdir)
+    prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH)
+    backup_out = os.path.join(
+        DATA_DIR, "labels", TUMOR_BACKUP_PATH
+    )  # TODO validate this path
+
+    manual_validation = ManualStage(
+        data_csv=csv_path,
+        out_path=prev_stage_path,
+        prev_stage_path=prev_stage_path,
+        backup_path=backup_out,
+    )
+    manual_validation.execute(subject_subdir)
+
+
+@app.command("consolidation_stage")
+def consolidation_stage(keep_files: bool = typer.Option(False, "--keep-files")):
+    from stages.split import SplitStage
+    from stages.utils import get_subdirectories
+
+    labels_out = os.path.join(DATA_DIR, "labels")
+    params_path = os.path.join(WORKSPACE_DIR, "parameters.yaml")
+    base_finalized_dir = os.path.join(DATA_DIR, TUMOR_PATH, INTERIM_FOLDER)
+
+    print(f"{keep_files=}")
+    if keep_files:
+        dirs_to_remove = []
+    else:
+        dirs_to_keep = {"metadata", "labels"}
+        dirs_to_remove = [
+            os.path.join(DATA_DIR, subdir)
+            for subdir in get_subdirectories(DATA_DIR)
+            if subdir not in dirs_to_keep
+        ]
+
+    split = SplitStage(
+        params=params_path,
+        data_path=DATA_DIR,
+        labels_path=labels_out,
+        staging_folders=dirs_to_remove,
+        base_finalized_dir=base_finalized_dir,
+    )
+    split.execute()
 
 
 if __name__ == "__main__":

@@ -22,6 +22,14 @@ def get_directory_structure(rootdir):
     return dir
 
 
+def get_subdirectories(base_directory: str):
+    return [
+        subdir
+        for subdir in os.listdir(base_directory)
+        if os.path.isdir(os.path.join(base_directory, subdir))
+    ]
+
+
 def has_prepared_folder_structure(data_path, labels_path) -> bool:
     data_struct = list(get_directory_structure(data_path).values())[0]
     labels_struct = list(get_directory_structure(labels_path).values())[0]
@@ -121,6 +129,7 @@ def set_files_read_only(path):
 
 def cleanup_storage(remove_folders):
     for folder in remove_folders:
+        print(f"Deleting directory {folder}...")
         shutil.rmtree(folder, ignore_errors=True)
 
 

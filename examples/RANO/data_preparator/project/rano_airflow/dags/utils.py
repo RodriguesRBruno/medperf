@@ -11,9 +11,18 @@ def _mount_helper(host_dirs: list[str], container_dirs: list[str]):
     return Mount(source=host_dir, target=container_dir, type="bind")
 
 
-def _docker_operator_factory(command_name: str, *command_args: str) -> DockerOperator:
+def docker_operator_factory(
+    command_name: str,
+    *command_args: str,
+    task_id: str = None,
+    task_display_name: str = None,
+) -> DockerOperator:
+
     workspace_host_dir = os.getenv("WORKSPACE_DIRECTORY")
     project_dir = os.getenv("PROJECT_DIRECTORY")
+
+    task_id = task_id or command_name
+    task_display_name = task_display_name or task_id
 
     mounts = [
         _mount_helper(
@@ -27,7 +36,8 @@ def _docker_operator_factory(command_name: str, *command_args: str) -> DockerOpe
         image="rano_docker_stages",
         command=[command_name, *command_args],
         mounts=mounts,
-        task_id=command_name,
+        task_id=task_id,
+        task_display_name=task_display_name,
         auto_remove="success",
     )
 
@@ -44,11 +54,17 @@ def dummy_operator_factory(
 
 
 def make_pipeline_for_subject(subject_subdir):
-    _PIPELINE_STAGES = ["make_csv", "convert_nifti", "extract_brain", "extract_tumor"]
-    _UNIMPLEMENTED_STAGES = ["manual_annotation", "segment_comparison"]
+    _PIPELINE_STAGES = [
+        "make_csv",
+        "convert_nifti",
+        "extract_brain",
+        "extract_tumor",
+        "manual_annotation",
+    ]
+    _UNIMPLEMENTED_STAGES = ["segment_comparison"]
     prev_task = None
     for stage in _PIPELINE_STAGES:
-        curr_task = _docker_operator_factory(stage, "--subject-subdir", subject_subdir)
+        curr_task = docker_operator_factory(stage, "--subject-subdir", subject_subdir)
         if prev_task is not None:
             prev_task >> curr_task
         prev_task = curr_task
