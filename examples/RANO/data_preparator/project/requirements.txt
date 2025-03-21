@@ -9,4 +9,3 @@ FigureGenerator==0.0.4
 gandlf==0.0.16
 labelfusion==1.0.14
 nibabel==5.1.0
-setuptools==75.8.2  # Version 76 is bugged
