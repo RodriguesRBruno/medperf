@@ -9,10 +9,15 @@ import yaml
 import pandas as pd
 from filelock import FileLock
 
-from examples.RANO.data_preparator.project.stages.pipeline import normalize_report_paths
 
 from .env_vars import DATA_DIR, REPORT_PATH, REPORT_LOCK
 from .mlcube_constants import OUT_CSV
+
+
+def convert_path_to_index(path: str):
+    as_list = path.split(os.sep)
+    as_index = "|".join(as_list)
+    return as_index
 
 
 # Taken from https://code.activestate.com/recipes/577879-create-a-nested-dictionary-from-oswalk/
@@ -121,6 +126,21 @@ def load_report(report_path: str = None) -> pd.DataFrame:
     return report_df
 
 
+def normalize_report_paths(report: DataFrame) -> DataFrame:
+    """Ensures paths are normalized and converts them to relative paths for the local machine
+
+    Args:
+        report (DataFrame): report to normalize
+
+    Returns:
+        DataFrame: report with transformed paths
+    """
+    pattern = "mlcube_io\d+"
+    report["data_path"] = report["data_path"].str.split(pattern).str[-1]
+    report["labels_path"] = report["labels_path"].str.split(pattern).str[-1]
+    return report
+
+
 def write_report(report: DataFrame, filepath: str = None):
     filepath = filepath or REPORT_PATH
     report = normalize_report_paths(report)
@@ -153,7 +173,7 @@ def update_row_with_dict(df, d, idx):  # TODO remove df arg everywhere
 
 
 def get_id_tp(index: str):
-    return index.split(os.sep)
+    return index.split("|")
 
 
 def set_files_read_only(path):

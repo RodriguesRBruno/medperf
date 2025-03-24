@@ -12,21 +12,6 @@ from .utils import cleanup_storage
 from .mlcube_constants import DONE_STAGE_STATUS
 
 
-def normalize_report_paths(report: DataFrame) -> DataFrame:
-    """Ensures paths are normalized and converts them to relative paths for the local machine
-
-    Args:
-        report (DataFrame): report to normalize
-
-    Returns:
-        DataFrame: report with transformed paths
-    """
-    pattern = "mlcube_io\d+"
-    report["data_path"] = report["data_path"].str.split(pattern).str[-1]
-    report["labels_path"] = report["labels_path"].str.split(pattern).str[-1]
-    return report
-
-
 class Pipeline:
     def __init__(
         self,

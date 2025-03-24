@@ -22,7 +22,7 @@ CSV_HEADERS = ["SubjectID", "Timepoint", "T1", "T1GD", "T2", "FLAIR"]
 
 
 def get_index(subject, timepoint):
-    return os.path.join(subject, timepoint)
+    return f"{subject}|{timepoint}"
 
 
 def has_alternative_folder_structure(subject_tp_path, og_path):
