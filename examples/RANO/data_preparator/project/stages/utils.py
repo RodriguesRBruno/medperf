@@ -4,7 +4,12 @@ from tqdm import tqdm
 from functools import reduce
 from pathlib import Path
 import hashlib
+import yaml
+import pandas as pd
+from filelock import FileLock
 
+from .env_vars import DATA_DIR, REPORT_PATH, REPORT_LOCK
+from .mlcube_constants import OUT_CSV
 
 # Taken from https://code.activestate.com/recipes/577879-create-a-nested-dictionary-from-oswalk/
 def get_directory_structure(rootdir):
@@ -102,12 +107,31 @@ def unnormalize_path(path: str, parent: str) -> str:
     return os.path.join(parent, path)
 
 
-def update_row_with_dict(df, d, idx):
-    if df is None:
-        return
+def load_report() -> pd.DataFrame:
+    with open(REPORT_PATH, 'r') as f:
+        report_data = yaml.safe_load(f)
+    
+    report_df = pd.DataFrame(report_data)
 
-    for key in d.keys():
-        df.loc[idx, key] = d.get(key)
+    return report_df
+
+def update_row_with_dict(df, d, idx): # TODO remove df arg everywhere
+    from .pipeline import write_report
+    from time import perf_counter
+    print(f'Attempting to update report...')
+    lock = FileLock(REPORT_LOCK, timeout=-1) 
+    start = perf_counter()
+    
+    with lock:
+        df = load_report()
+
+        for key in d.keys():
+            df.loc[idx, key] = d.get(key)
+
+            write_report(df, REPORT_PATH)
+
+    end = perf_counter()
+    print(f'Updated report after {round(end-start,2)}s')
 
 
 def get_id_tp(index: str):
@@ -172,3 +196,12 @@ def md5_file(filepath):
 class MockTqdm(tqdm):
     def __getattr__(self, attr):
         return lambda *args, **kwargs: None
+
+
+def get_data_csv_dir(subject_subdir):
+    return os.path.join(DATA_DIR, "csv", subject_subdir)
+
+
+def get_data_csv_filepath(subject_subdir):
+    csv_dir = get_data_csv_dir(subject_subdir)
+    return os.path.join(csv_dir, OUT_CSV)

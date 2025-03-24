@@ -5,18 +5,25 @@ import os
 import re
 import shutil
 from typing import Tuple
-from .utils import has_prepared_folder_structure, md5_dir, md5_file
+from .utils import has_prepared_folder_structure, md5_dir, get_data_csv_filepath
 from .constants import INTERIM_FOLDER, FINAL_FOLDER, TUMOR_MASK_FOLDER
 from .mlcube_constants import REPORT_STAGE_STATUS
 
-DICOM_MODALITIES_PREFIX = {"fl": "t2_Flair", "t1": "t1_axial-3", "t1c": "t1_axial_stealth", "t2": "T2_SAG"}
+DICOM_MODALITIES_PREFIX = {
+    "fl": "t2_Flair",
+    "t1": "t1_axial-3",
+    "t1c": "t1_axial_stealth",
+    "t2": "T2_SAG",
+}
 NIFTI_MODALITIES = ["t1c", "t1n", "t2f", "t2w"]
 BRAIN_SCAN_NAME = "brain_(.*)"
 TUMOR_SEG_NAME = "final_seg"
 CSV_HEADERS = ["SubjectID", "Timepoint", "T1", "T1GD", "T2", "FLAIR"]
 
+
 def get_index(subject, timepoint):
-    return f"{subject}|{timepoint}"
+    return os.path.join(subject, timepoint)
+
 
 def has_alternative_folder_structure(subject_tp_path, og_path):
     contents = os.listdir(subject_tp_path)
@@ -41,6 +48,7 @@ def has_alternative_folder_structure(subject_tp_path, og_path):
 
     # Structure not identified at this tree
     return False, og_path
+
 
 def to_expected_folder_structure(subject_tp_path, contents_path):
     # Create the modality folders
@@ -68,6 +76,7 @@ def to_expected_folder_structure(subject_tp_path, contents_path):
         folder_path = os.path.join(subject_tp_path, folder)
         shutil.rmtree(folder_path)
 
+
 def has_semiprepared_folder_structure(subject_tp_path, og_path, recursive=True):
     contents = os.listdir(subject_tp_path)
     suffixes_presence = {suffix: False for suffix in NIFTI_MODALITIES}
@@ -78,7 +87,7 @@ def has_semiprepared_folder_structure(subject_tp_path, og_path, recursive=True):
                 return has_semiprepared_folder_structure(content_path, og_path)
             else:
                 continue
-        
+
         if not content.endswith(".nii.gz"):
             continue
 
@@ -92,6 +101,7 @@ def has_semiprepared_folder_structure(subject_tp_path, og_path, recursive=True):
 
     return False, og_path
 
+
 def get_timepoints(subject, subject_tp_path):
     contents = os.listdir(subject_tp_path)
     timepoints = set()
@@ -102,12 +112,15 @@ def get_timepoints(subject, subject_tp_path):
             timepoints.add(content)
             continue
 
-        pattern = re.compile(f"{subject}_(.*)_(?:{BRAIN_SCAN_NAME}|{TUMOR_SEG_NAME})\.nii\.gz")
+        pattern = re.compile(
+            f"{subject}_(.*)_(?:{BRAIN_SCAN_NAME}|{TUMOR_SEG_NAME})\.nii\.gz"
+        )
         result = pattern.search(content)
         timepoint = result.group(1)
         timepoints.add(timepoint)
 
     return list(timepoints)
+
 
 def get_tumor_segmentation(subject, timepoint, subject_tp_path):
     contents = os.listdir(subject_tp_path)
@@ -115,6 +128,7 @@ def get_tumor_segmentation(subject, timepoint, subject_tp_path):
     if seg_file in contents:
         return seg_file
     return None
+
 
 def move_brain_scans(subject, timepoint, in_subject_path, out_data_path):
     final_path = os.path.join(out_data_path, FINAL_FOLDER, subject, timepoint)
@@ -130,7 +144,10 @@ def move_brain_scans(subject, timepoint, in_subject_path, out_data_path):
         out_scan = os.path.join(final_path, scan)
         shutil.copyfile(in_scan, out_scan)
 
-def move_tumor_segmentation(subject, timepoint, seg_file, in_subject_path, out_data_path, out_labels_path):
+
+def move_tumor_segmentation(
+    subject, timepoint, seg_file, in_subject_path, out_data_path, out_labels_path
+):
     interim_path = os.path.join(out_data_path, INTERIM_FOLDER, subject, timepoint)
     os.makedirs(interim_path, exist_ok=True)
 
@@ -150,21 +167,27 @@ def move_tumor_segmentation(subject, timepoint, seg_file, in_subject_path, out_d
 
     # Place the segmentation in the backup folder
     backup_path = os.path.join(out_labels_path, ".tumor_segmentation_backup")
-    subject_tp_backup_path = os.path.join(backup_path, subject, timepoint, TUMOR_MASK_FOLDER)
+    subject_tp_backup_path = os.path.join(
+        backup_path, subject, timepoint, TUMOR_MASK_FOLDER
+    )
     os.makedirs(subject_tp_backup_path, exist_ok=True)
     seg_backup_path = os.path.join(subject_tp_backup_path, seg_file)
     shutil.copyfile(in_seg_path, seg_backup_path)
 
     return in_seg_path, seg_finalized_path
 
+
 def write_partial_csv(csv_path, subject, timepoint):
     # Used when cases are semi-prepared, in which case they
     # skip the formal csv creation
+    if csv_path is None:
+        csv_path = get_data_csv_filepath(os.path.join(subject, timepoint))
+
     if os.path.exists(csv_path):
         df = pd.read_csv(csv_path)
     else:
         df = pd.DataFrame(columns=CSV_HEADERS)
-    
+
     row = pd.Series(index=CSV_HEADERS)
     row["SubjectID"] = subject
     row["Timepoint"] = timepoint
@@ -216,7 +239,9 @@ class GenerateReport(DatasetStage):
 
     def _proceed_to_comparison(self, subject, timepoint, in_subject_path, report):
         index = get_index(subject, timepoint)
-        final_path = os.path.join(self.tumor_data_out_path, FINAL_FOLDER, subject, timepoint)
+        final_path = os.path.join(
+            self.tumor_data_out_path, FINAL_FOLDER, subject, timepoint
+        )
         input_hash = md5_dir(in_subject_path)
         # Stop if the subject was already present and no input change has happened
         if index in report.index:
@@ -228,7 +253,14 @@ class GenerateReport(DatasetStage):
 
         # Move tumor segmentation to its expected location
         seg_file = f"{subject}_{timepoint}_{TUMOR_SEG_NAME}.nii.gz"
-        _, seg_finalized_path = move_tumor_segmentation(subject, timepoint, seg_file, in_subject_path, self.tumor_data_out_path, self.output_labels_path)
+        _, seg_finalized_path = move_tumor_segmentation(
+            subject,
+            timepoint,
+            seg_file,
+            in_subject_path,
+            self.tumor_data_out_path,
+            self.output_labels_path,
+        )
 
         # Update the report
         data = {
@@ -256,8 +288,12 @@ class GenerateReport(DatasetStage):
         if index in report.index:
             if input_hash == report.loc[index]["input_hash"]:
                 return report
-        final_path = os.path.join(self.brain_data_out_path, FINAL_FOLDER, subject, timepoint)
-        labels_path = os.path.join(self.brain_data_out_path, INTERIM_FOLDER, subject, timepoint)
+        final_path = os.path.join(
+            self.brain_data_out_path, FINAL_FOLDER, subject, timepoint
+        )
+        labels_path = os.path.join(
+            self.brain_data_out_path, INTERIM_FOLDER, subject, timepoint
+        )
         os.makedirs(final_path, exist_ok=True)
         os.makedirs(labels_path, exist_ok=True)
 
@@ -320,16 +356,24 @@ class GenerateReport(DatasetStage):
             if not os.path.isdir(in_subject_path):
                 continue
 
-            has_semiprepared, _ = has_semiprepared_folder_structure(in_subject_path, in_subject_path, recursive=False)
+            has_semiprepared, _ = has_semiprepared_folder_structure(
+                in_subject_path, in_subject_path, recursive=False
+            )
             if has_semiprepared:
                 timepoints = get_timepoints(subject, in_subject_path)
                 for timepoint in timepoints:
                     index = get_index(subject, timepoint)
-                    tumor_seg = get_tumor_segmentation(subject, timepoint, in_subject_path)
+                    tumor_seg = get_tumor_segmentation(
+                        subject, timepoint, in_subject_path
+                    )
                     if tumor_seg is not None:
-                        report = self._proceed_to_comparison(subject, timepoint, in_subject_path, report)
+                        report = self._proceed_to_comparison(
+                            subject, timepoint, in_subject_path, report
+                        )
                     else:
-                        report = self._proceed_to_tumor_extraction(subject, timepoint, in_subject_path, report)
+                        report = self._proceed_to_tumor_extraction(
+                            subject, timepoint, in_subject_path, report
+                        )
                     observed_cases.add(index)
                     continue
 
@@ -349,13 +393,19 @@ class GenerateReport(DatasetStage):
                 # Keep track of the cases that were found on the input folder
                 observed_cases.add(index)
 
-                has_semiprepared, in_tp_path = has_semiprepared_folder_structure(in_tp_path, in_tp_path, recursive=True)
+                has_semiprepared, in_tp_path = has_semiprepared_folder_structure(
+                    in_tp_path, in_tp_path, recursive=True
+                )
                 if has_semiprepared:
                     tumor_seg = get_tumor_segmentation(subject, timepoint, in_tp_path)
                     if tumor_seg is not None:
-                        report = self._proceed_to_comparison(subject, timepoint, in_tp_path, report)
+                        report = self._proceed_to_comparison(
+                            subject, timepoint, in_tp_path, report
+                        )
                     else:
-                        report = self._proceed_to_tumor_extraction(subject, timepoint, in_tp_path, report)
+                        report = self._proceed_to_tumor_extraction(
+                            subject, timepoint, in_tp_path, report
+                        )
                     continue
 
                 if index in report.index:
@@ -368,7 +418,9 @@ class GenerateReport(DatasetStage):
                     if has_not_changed and has_a_valid_status:
                         continue
 
-                    print(f"Case {index} has either changed ({not has_not_changed}) or has a corrupted status ({not has_a_valid_status}). Starting from scratch")
+                    print(
+                        f"Case {index} has either changed ({not has_not_changed}) or has a corrupted status ({not has_a_valid_status}). Starting from scratch"
+                    )
 
                     shutil.rmtree(out_tp_path, ignore_errors=True)
                     shutil.copytree(in_tp_path, out_tp_path)
@@ -389,7 +441,9 @@ class GenerateReport(DatasetStage):
                     "input_hash": input_hash,
                 }
 
-                has_alternative, contents_path = has_alternative_folder_structure(out_tp_path, out_tp_path)
+                has_alternative, contents_path = has_alternative_folder_structure(
+                    out_tp_path, out_tp_path
+                )
                 if has_alternative:
                     # Move files around so it has the expected structure
                     to_expected_folder_structure(out_tp_path, contents_path)
@@ -411,4 +465,4 @@ class GenerateReport(DatasetStage):
             report = report.drop(case_index)
 
         report = report.sort_index()
-        return report, True
+        return report

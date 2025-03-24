@@ -1,0 +1,8 @@
+import os
+
+
+WORKSPACE_DIR = os.getenv("WORKSPACE_DIRECTORY")
+DATA_DIR = os.path.join(WORKSPACE_DIR, "data")
+INPUT_DIR = os.path.join(WORKSPACE_DIR, "input_data")
+REPORT_PATH = os.getenv("REPORT_FILE") or os.path.join(WORKSPACE_DIR, "report.yaml")
+REPORT_LOCK = os.path.splitext(REPORT_PATH)[0] + '.lock'

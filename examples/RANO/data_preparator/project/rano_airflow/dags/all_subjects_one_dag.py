@@ -23,11 +23,16 @@ with DAG(
     is_paused_upon_creation=True,
 ) as dag:
 
+    with TaskGroup(group_id="report_creation_stage") as report_stage:
+        report = docker_operator_factory(
+            "create_report", task_display_name="Create Report Stage"
+        )
+
     with TaskGroup(
         group_id="finalizing_dataset_stages",
         tooltip="Final processing stages",
         default_args={"trigger_rule": TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS},
-    ) as dataset_stages:
+    ) as finalizing_stages:
 
         confirmation = dummy_operator_factory(
             dummy_id="confirmation_stage", dummy_display_name="DUMMY Confirmation"
@@ -52,4 +57,4 @@ with DAG(
             ) as this_task_group:
                 make_pipeline_for_subject(subject_subdir)
 
-            this_task_group >> dataset_stages
+            report_stage >> this_task_group >> finalizing_stages

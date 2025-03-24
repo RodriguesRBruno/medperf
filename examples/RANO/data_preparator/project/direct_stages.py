@@ -2,32 +2,48 @@
 
 import typer
 import os
+from stages.env_vars import WORKSPACE_DIR, DATA_DIR, INPUT_DIR, REPORT_PATH
+from stages.utils import get_data_csv_dir, get_data_csv_filepath
 from stages.mlcube_constants import (
-    OUT_CSV,
     VALID_PATH,
     PREP_PATH,
     BRAIN_PATH,
     TUMOR_PATH,
+    DONE_STAGE_STATUS,
     BRAIN_STAGE_STATUS,
     TUMOR_STAGE_STATUS,
     TUMOR_BACKUP_PATH,
+    MANUAL_STAGE_STATUS,
 )
 from stages.constants import INTERIM_FOLDER
+from stages.pipeline import write_report
 
 app = typer.Typer()
 
-WORKSPACE_DIR = os.getenv("WORKSPACE_DIRECTORY")
-DATA_DIR = os.path.join(WORKSPACE_DIR, "data")
-INPUT_DIR = os.path.join(WORKSPACE_DIR, "input_data")
 
+@app.command("create_report")
+def create_report():
+    from stages.generate_report import GenerateReport
 
-def _get_data_csv_dir(subject_subdir):
-    return os.path.join(DATA_DIR, "csv", subject_subdir)
-
-
-def _get_data_csv_filepath(subject_subdir):
-    csv_dir = _get_data_csv_dir(subject_subdir)
-    return os.path.join(csv_dir, OUT_CSV)
+    raw_dir = os.path.join(DATA_DIR, "raw")
+    labels_out_dir = os.path.join(DATA_DIR, "labels")
+    brain_out = os.path.join(DATA_DIR, BRAIN_PATH)
+    tumor_out = os.path.join(DATA_DIR, TUMOR_PATH)
+    report_generator = GenerateReport(
+        data_csv=None,
+        input_path=INPUT_DIR,
+        output_path=raw_dir,
+        input_labels_path=INPUT_DIR,
+        output_labels_path=labels_out_dir,
+        done_data_out_path=DATA_DIR,
+        done_status=DONE_STAGE_STATUS,
+        brain_data_out_path=brain_out,
+        brain_status=BRAIN_STAGE_STATUS,
+        tumor_data_out_path=tumor_out,
+        reviewed_status=MANUAL_STAGE_STATUS,
+    )
+    report = report_generator.execute(None)
+    write_report(report, REPORT_PATH)
 
 
 @app.command("make_csv")
@@ -38,9 +54,9 @@ def prepare(
         AddToCSV,
     )
 
-    output_csv_dir = _get_data_csv_dir(subject_subdir)
+    output_csv_dir = get_data_csv_dir(subject_subdir)
     os.makedirs(output_csv_dir, exist_ok=True)
-    output_csv = _get_data_csv_filepath(subject_subdir)
+    output_csv = get_data_csv_filepath(subject_subdir)
     out_dir = os.path.join(DATA_DIR, VALID_PATH)
     csv_creator = AddToCSV(
         input_dir=INPUT_DIR,
@@ -58,7 +74,7 @@ def convert_nifti(
 ):
     from stages.nifti_transform import NIfTITransform
 
-    csv_path = _get_data_csv_filepath(subject_subdir)
+    csv_path = get_data_csv_filepath(subject_subdir)
     output_path = os.path.join(DATA_DIR, PREP_PATH)
     metadata_path = os.path.join(DATA_DIR, "metadata")
     os.makedirs(output_path, exist_ok=True)
@@ -81,7 +97,7 @@ def extract_brain(
 ):
     from stages.extract import Extract
 
-    csv_path = _get_data_csv_filepath(subject_subdir)
+    csv_path = get_data_csv_filepath(subject_subdir)
     output_path = os.path.join(DATA_DIR, BRAIN_PATH)
     prev_path = os.path.join(DATA_DIR, PREP_PATH)
     os.makedirs(output_path, exist_ok=True)
@@ -105,7 +121,7 @@ def extract_tumor(
 ):
     from stages.extract_nnunet import ExtractNnUNet
 
-    csv_path = _get_data_csv_filepath(subject_subdir)
+    csv_path = get_data_csv_filepath(subject_subdir)
     output_path = os.path.join(DATA_DIR, TUMOR_PATH)
     prev_path = os.path.join(DATA_DIR, BRAIN_PATH)
     os.makedirs(output_path, exist_ok=True)
@@ -153,7 +169,7 @@ def manual_annotation(
 
     from stages.manual import ManualStage
 
-    csv_path = _get_data_csv_filepath(subject_subdir)
+    csv_path = get_data_csv_filepath(subject_subdir)
     prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH)
     backup_out = os.path.join(
         DATA_DIR, "labels", TUMOR_BACKUP_PATH

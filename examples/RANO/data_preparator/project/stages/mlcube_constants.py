@@ -7,6 +7,7 @@ TUMOR_BACKUP_PATH = ".tumor_segmentation_backup"
 OUT_CSV = "data.csv"
 TRASH_PATH = ".trash"
 INVALID_FILE = ".invalid.txt"
+REPORT_FILE = "report.yaml"
 
 REPORT_STAGE_STATUS = 0
 CSV_STAGE_STATUS = 1
