@@ -1,5 +1,6 @@
 import os
 import shutil
+from pandas import DataFrame
 from tqdm import tqdm
 from functools import reduce
 from pathlib import Path
@@ -8,8 +9,11 @@ import yaml
 import pandas as pd
 from filelock import FileLock
 
+from examples.RANO.data_preparator.project.stages.pipeline import normalize_report_paths
+
 from .env_vars import DATA_DIR, REPORT_PATH, REPORT_LOCK
 from .mlcube_constants import OUT_CSV
+
 
 # Taken from https://code.activestate.com/recipes/577879-create-a-nested-dictionary-from-oswalk/
 def get_directory_structure(rootdir):
@@ -107,21 +111,35 @@ def unnormalize_path(path: str, parent: str) -> str:
     return os.path.join(parent, path)
 
 
-def load_report() -> pd.DataFrame:
-    with open(REPORT_PATH, 'r') as f:
+def load_report(report_path: str = None) -> pd.DataFrame:
+    report_path = report_path or REPORT_PATH
+    with open(report_path, "r") as f:
         report_data = yaml.safe_load(f)
-    
+
     report_df = pd.DataFrame(report_data)
 
     return report_df
 
-def update_row_with_dict(df, d, idx): # TODO remove df arg everywhere
-    from .pipeline import write_report
+
+def write_report(report: DataFrame, filepath: str = None):
+    filepath = filepath or REPORT_PATH
+    report = normalize_report_paths(report)
+    report_dict = report.to_dict()
+
+    # Use a temporary file to avoid quick writes collisions and corruption
+    temp_path = Path(filepath).parent / ".report.yaml"
+    with open(temp_path, "w") as f:
+        yaml.dump(report_dict, f)
+    os.rename(temp_path, filepath)
+
+
+def update_row_with_dict(df, d, idx):  # TODO remove df arg everywhere
     from time import perf_counter
-    print(f'Attempting to update report...')
-    lock = FileLock(REPORT_LOCK, timeout=-1) 
+
+    print(f"Attempting to update report...")
+    lock = FileLock(REPORT_LOCK, timeout=-1)
     start = perf_counter()
-    
+
     with lock:
         df = load_report()
 
@@ -131,7 +149,7 @@ def update_row_with_dict(df, d, idx): # TODO remove df arg everywhere
             write_report(df, REPORT_PATH)
 
     end = perf_counter()
-    print(f'Updated report after {round(end-start,2)}s')
+    print(f"Updated report after {round(end-start,2)}s")
 
 
 def get_id_tp(index: str):

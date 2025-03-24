@@ -2,10 +2,9 @@ from pandas import DataFrame
 from typing import Union, List, Tuple
 from tqdm import tqdm
 import traceback
-from pathlib import Path
-import yaml
 import os
 
+from .utils import write_report
 from .dset_stage import DatasetStage
 from .row_stage import RowStage
 from .stage import Stage
@@ -28,17 +27,6 @@ def normalize_report_paths(report: DataFrame) -> DataFrame:
     return report
 
 
-def write_report(report: DataFrame, filepath: str):
-    report = normalize_report_paths(report)
-    report_dict = report.to_dict()
-    
-    # Use a temporary file to avoid quick writes collisions and corruption
-    temp_path = Path(filepath).parent / ".report.yaml"
-    with open(temp_path, 'w') as f:
-        yaml.dump(report_dict, f)
-    os.rename(temp_path, filepath)
-
-
 class Pipeline:
     def __init__(
         self,
@@ -46,7 +34,7 @@ class Pipeline:
         stages: List[Union[DatasetStage, RowStage]],
         staging_folders: List[str],
         trash_folders: List[str],
-        invalid_subjects_file: str
+        invalid_subjects_file: str,
     ):
         self.init_stage = init_stage
         self.stages = stages
@@ -282,7 +270,6 @@ class Pipeline:
         elif isinstance(stage, DatasetStage):
             pbar.set_description(f"{stage.name}")
             report, successful = stage.execute(report)
-
 
         return report, successful
 
