@@ -62,10 +62,18 @@ class SplitStage(DatasetStage):
         return True
 
     def __report_success(self, report: pd.DataFrame) -> pd.DataFrame:
-        if report is None:
-            return
+        from filelock import FileLock
+        from .env_vars import REPORT_LOCK
+        from .utils import load_report, write_report
 
-        report["status"] = self.status_code
+        lock = FileLock(REPORT_LOCK, timeout=-1)
+
+        with lock:
+            if report is None:
+                report = load_report()
+
+            report["status"] = self.status_code
+            write_report(report)
 
         return report
 
