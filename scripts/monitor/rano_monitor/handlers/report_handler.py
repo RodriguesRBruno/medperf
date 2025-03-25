@@ -1,5 +1,5 @@
 import yaml
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler, FileMovedEvent, FileCreatedEvent, FileModifiedEvent
 
 
 class ReportState:
@@ -24,6 +24,15 @@ class ReportHandler(FileSystemEventHandler):
     def __init__(self, report_state: ReportState):
         self.report_state = report_state
 
-    def on_modified(self, event):
-        if event.src_path == self.report_state.report_path:
+    def _possible_report_update(self, possible_report_path: str):
+        if possible_report_path == self.report_state.report_path:
             self.report_state.update()
+
+    def on_created(self, event: FileCreatedEvent):
+        self._possible_report_update(event.src_path)
+
+    def on_modified(self, event: FileModifiedEvent):
+        self._possible_report_update(event.src_path)
+
+    def on_moved(self, event: FileMovedEvent):
+        self._possible_report_update(event.dest_path)
