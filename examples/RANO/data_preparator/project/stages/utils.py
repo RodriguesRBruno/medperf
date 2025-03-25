@@ -7,10 +7,9 @@ from pathlib import Path
 import hashlib
 import yaml
 import pandas as pd
-from filelock import FileLock
+from filelock import SoftFileLock
 
-
-from .env_vars import DATA_DIR, REPORT_PATH, REPORT_LOCK
+from .env_vars import DATA_DIR, REPORT_PATH, REPORT_LOCK, DATA_SUBDIR
 from .mlcube_constants import OUT_CSV
 
 
@@ -118,6 +117,7 @@ def unnormalize_path(path: str, parent: str) -> str:
 
 def load_report(report_path: str = None) -> pd.DataFrame:
     report_path = report_path or REPORT_PATH
+
     with open(report_path, "r") as f:
         report_data = yaml.safe_load(f)
 
@@ -135,7 +135,7 @@ def normalize_report_paths(report: DataFrame) -> DataFrame:
     Returns:
         DataFrame: report with transformed paths
     """
-    pattern = "mlcube_io\d+"
+    pattern = DATA_SUBDIR
     report["data_path"] = report["data_path"].str.split(pattern).str[-1]
     report["labels_path"] = report["labels_path"].str.split(pattern).str[-1]
     return report
@@ -157,10 +157,9 @@ def update_row_with_dict(df, d, idx):  # TODO remove df arg everywhere
     from time import perf_counter
 
     print(f"Attempting to update report...")
-    lock = FileLock(REPORT_LOCK, timeout=-1)
     start = perf_counter()
 
-    with lock:
+    with SoftFileLock(REPORT_LOCK, timeout=-1) as lock:
         df = load_report()
 
         for key in d.keys():
