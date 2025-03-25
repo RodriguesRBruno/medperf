@@ -3,7 +3,7 @@
 import typer
 import os
 from stages.env_vars import WORKSPACE_DIR, DATA_DIR, INPUT_DIR, REPORT_PATH
-from stages.utils import get_data_csv_dir, get_data_csv_filepath
+from stages.utils import get_data_csv_dir, get_data_csv_filepath, convert_path_to_index
 from stages.mlcube_constants import (
     VALID_PATH,
     PREP_PATH,
@@ -16,7 +16,7 @@ from stages.mlcube_constants import (
     MANUAL_STAGE_STATUS,
 )
 from stages.constants import INTERIM_FOLDER
-from stages.pipeline import write_report
+from stages.utils import write_report
 
 app = typer.Typer()
 
@@ -64,7 +64,8 @@ def prepare(
         out_dir=out_dir,
         prev_stage_path=INPUT_DIR,  # TODO validate this
     )
-    csv_creator.execute(subject_subdir)
+    subject_index = convert_path_to_index(subject_subdir)
+    csv_creator.execute(subject_index)
     print(output_csv)
 
 
@@ -87,7 +88,8 @@ def convert_nifti(
         metadata_path=metadata_path,
         data_out=DATA_DIR,
     )
-    nifti_transform.execute(subject_subdir)
+    subject_index = convert_path_to_index(subject_subdir)
+    nifti_transform.execute(subject_index)
     print(output_path)
 
 
@@ -111,7 +113,8 @@ def extract_brain(
         func_name="extract_brain",
         status_code=BRAIN_STAGE_STATUS,
     )
-    brain_extract.execute(subject_subdir)
+    subject_index = convert_path_to_index(subject_subdir)
+    brain_extract.execute(subject_index)
     print(output_path)
 
 
@@ -144,7 +147,8 @@ def extract_tumor(
         prev_subpath=INTERIM_FOLDER,
         status_code=TUMOR_STAGE_STATUS,
     )
-    tumor_extract.execute(subject_subdir)
+    subject_index = convert_path_to_index(subject_subdir)
+    tumor_extract.execute(subject_index)
     print(output_path)
 
 
@@ -181,7 +185,8 @@ def manual_annotation(
         prev_stage_path=prev_stage_path,
         backup_path=backup_out,
     )
-    manual_validation.execute(subject_subdir)
+    subject_index = convert_path_to_index(subject_subdir)
+    manual_validation.execute(subject_index)
 
 
 @app.command("consolidation_stage")
