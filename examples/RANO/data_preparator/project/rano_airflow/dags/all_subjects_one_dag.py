@@ -8,6 +8,7 @@ from utils import (
     create_legal_id,
     dummy_operator_factory,
     docker_operator_factory,
+    RANOStage
 )
 from datetime import datetime
 
@@ -20,13 +21,13 @@ with DAG(
     max_active_runs=1,
     schedule="@once",
     start_date=datetime(2024, 1, 1),
-    is_paused_upon_creation=True,
+    is_paused_upon_creation=False,
 ) as dag:
 
     with TaskGroup(group_id="report_creation_stage") as report_stage:
         report = docker_operator_factory(
-            "create_report", task_display_name="Create Report Stage"
-        )
+            RANOStage(command='create_report', task_display_name='Create Report Stage')
+            )
 
     with TaskGroup(
         group_id="finalizing_dataset_stages",
@@ -39,8 +40,7 @@ with DAG(
         )
 
         consolidation = docker_operator_factory(
-            "consolidation_stage",
-            task_display_name="Consolidation Stage",
+            RANOStage(command='consolidation_stage', task_display_name='Consolidation Stage')
         )
 
         confirmation >> consolidation
@@ -57,4 +57,4 @@ with DAG(
             ) as this_task_group:
                 make_pipeline_for_subject(subject_subdir)
 
-            report_stage >> this_task_group >> finalizing_stages
+            report_stage >> this_task_group  >> finalizing_stages

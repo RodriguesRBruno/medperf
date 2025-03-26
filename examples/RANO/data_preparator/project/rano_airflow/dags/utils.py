@@ -4,6 +4,14 @@ from airflow.operators.empty import EmptyOperator
 from docker.types import Mount
 import os
 
+class RANOStage:
+    def __init__(self, command: str, *command_args, task_id: str = None, task_display_name: str = None,
+                 **operator_kwargs):
+        self.command = command
+        self.command_args = command_args
+        self.task_id = task_id or self.command
+        self.task_display_name = (task_display_name or self.task_id) or self.command
+        self.operator_kwargs = operator_kwargs
 
 def _mount_helper(host_dirs: list[str], container_dirs: list[str]):
     host_dir = os.path.join(*host_dirs)
@@ -12,17 +20,11 @@ def _mount_helper(host_dirs: list[str], container_dirs: list[str]):
 
 
 def docker_operator_factory(
-    command_name: str,
-    *command_args: str,
-    task_id: str = None,
-    task_display_name: str = None,
+    rano_stage: RANOStage
 ) -> DockerOperator:
 
     workspace_host_dir = os.getenv("WORKSPACE_DIRECTORY")
     project_dir = os.getenv("PROJECT_DIRECTORY")
-
-    task_id = task_id or command_name
-    task_display_name = task_display_name or task_id
 
     mounts = [
         _mount_helper(
@@ -33,12 +35,13 @@ def docker_operator_factory(
     ]
 
     return DockerOperator(
-        image="rano_docker_stages",
-        command=[command_name, *command_args],
+        image="rano_docker_stages_v3",
+        command=[rano_stage.command, *rano_stage.command_args],
         mounts=mounts,
-        task_id=task_id,
-        task_display_name=task_display_name,
+        task_id=rano_stage.task_id,
+        task_display_name=rano_stage.task_display_name,
         auto_remove="success",
+        **rano_stage.operator_kwargs
     )
 
 
@@ -55,16 +58,16 @@ def dummy_operator_factory(
 
 def make_pipeline_for_subject(subject_subdir):
     _PIPELINE_STAGES = [
-        "make_csv",
-        "convert_nifti",
-        "extract_brain",
-        "extract_tumor",
-        "manual_annotation",
+        RANOStage("make_csv", "--subject-subdir", subject_subdir, task_display_name='Make CSV'),
+        RANOStage("convert_nifti", "--subject-subdir", subject_subdir, task_display_name='Convert to NIfTI'),
+        RANOStage("extract_brain", "--subject-subdir", subject_subdir, task_display_name='Extract Brain'),
+        RANOStage("extract_tumor", "--subject-subdir", subject_subdir, task_display_name='Extract Tumor'),
+        RANOStage("manual_annotation", "--subject-subdir", subject_subdir, task_display_name='Mannual Annotation'),
     ]
     _UNIMPLEMENTED_STAGES = ["segment_comparison"]
     prev_task = None
     for stage in _PIPELINE_STAGES:
-        curr_task = docker_operator_factory(stage, "--subject-subdir", subject_subdir)
+        curr_task = docker_operator_factory(stage)
         if prev_task is not None:
             prev_task >> curr_task
         prev_task = curr_task
