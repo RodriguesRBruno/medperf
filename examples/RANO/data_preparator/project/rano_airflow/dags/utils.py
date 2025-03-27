@@ -10,6 +10,8 @@ from airflow.models.dagrun import DagRun
 from airflow.models.dag import DAG
 from airflow.models.taskinstance import TaskInstance
 from airflow.utils.session import provide_session, NEW_SESSION
+from airflow.utils.state import State
+from airflow.exceptions import AirflowSkipException
 import time
 
 
@@ -118,6 +120,16 @@ def _clear_task(
     )
 
 
+def _get_task_of_same_subject_by_short_id(
+    base_task: TaskInstance, other_task_short_name: str
+) -> str:
+    this_id = base_task.task_id
+    id_prefix = this_id.rsplit(".", maxsplit=1)[0]
+
+    other_task_id = ".".join([id_prefix, other_task_short_name])
+    return other_task_id
+
+
 def _clear_task_from_same_subject(
     base_task: TaskInstance,
     other_task_short_name: str,
@@ -125,10 +137,10 @@ def _clear_task_from_same_subject(
     dag: DAG,
     include_downstream: bool,
 ):
-    this_id = base_task.task_id
-    id_prefix = this_id.rsplit(".", maxsplit=1)[0]
 
-    first_id_to_reset = ".".join([id_prefix, other_task_short_name])
+    first_id_to_reset = _get_task_of_same_subject_by_short_id(
+        base_task, other_task_short_name
+    )
     _clear_task(
         task_id=first_id_to_reset,
         dag_run=dag_run,
@@ -163,6 +175,23 @@ def _make_manual_stages(subject_subdir):
         ANNOTATED_FILE_NAME,
     )
 
+    @task(task_id="validate_state", trigger_rule=TriggerRule.ALL_FAILED)
+    def validate_segmentations_state(
+        dag_run: DagRun = None, task_instance: TaskInstance = None
+    ):
+        upstream_segmentations_validated_id = _get_task_of_same_subject_by_short_id(
+            task_instance, RANOTaskIDs.SEGMENTATIONS_VALIDATED
+        )
+        upstream_segmentations_validated_task = dag_run.get_task_instance(
+            task_id=upstream_segmentations_validated_id
+        )
+
+        if upstream_segmentations_validated_task.state == State.FAILED:
+            return
+        raise AirflowSkipException(
+            "Do not continue unless upstream state is explicitly Failed!"
+        )
+
     segmentations_validated = FileSensor(
         filepath=CONFIRMED_ANNOTATION_FILE,  # TODO can also send directory to return True for any files there. Maybe this is better?
         task_id=RANOTaskIDs.SEGMENTATIONS_VALIDATED,
@@ -172,18 +201,27 @@ def _make_manual_stages(subject_subdir):
         "This task will be successful once the finalized file is in the proper directory.",
         timeout=1,
         fs_conn_id="local_fs",
+        poke_interval=20,
     )
 
-    check_brain_mask_changed = dummy_operator_factory(
-        dummy_id="brain_mask_changed",
-        dummy_display_name="Brain Mask Changed?",
-        trigger_rule=TriggerRule.ALL_FAILED,
-        # on_failure_callback=_return_to_brain_extract,
-        # on_success_callback=_return_to_segmentations_validated,
+    check_brain_mask_changed_stage = RANOStage(
+        "manual_annotation",
+        "--subject-subdir",
+        subject_subdir,
+        task_id="brain_mask_changed",
+        task_display_name="Brain Mask Changed?",
     )
+    check_brain_mask_changed = docker_operator_factory(check_brain_mask_changed_stage)
+    # check_brain_mask_changed = dummy_operator_factory(
+    #     dummy_id="brain_mask_changed",
+    #     dummy_display_name="Brain Mask Changed?",
+    #     trigger_rule=TriggerRule.ALL_SUCCESS,
+    #     # on_failure_callback=_return_to_brain_extract,
+    #     # on_success_callback=_return_to_segmentations_validated,
+    # )
 
     @task(
-        trigger_rule=TriggerRule.ALL_FAILED,
+        trigger_rule=TriggerRule.ALL_SUCCESS,
         task_id=RANOTaskIDs.CLEAR_RETURN_TO_BRAIN_EXTRACT,
     )
     def clear_return_to_brain_extract(
@@ -214,7 +252,7 @@ def _make_manual_stages(subject_subdir):
         )
 
     @task(
-        trigger_rule=TriggerRule.ALL_SUCCESS,
+        trigger_rule=TriggerRule.ALL_FAILED,
         task_id=RANOTaskIDs.CLEAR_RETURN_TO_SEGMENTATIONS_VALIDATED,
     )
     def clear_return_to_file_sensor(
@@ -244,7 +282,11 @@ def _make_manual_stages(subject_subdir):
             include_downstream=True,
         )
 
-    segmentations_validated >> check_brain_mask_changed
+    (
+        segmentations_validated
+        >> validate_segmentations_state()
+        >> check_brain_mask_changed
+    )
     (
         check_brain_mask_changed
         >> clear_return_to_brain_extract()
