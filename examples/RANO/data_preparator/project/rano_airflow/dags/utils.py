@@ -171,6 +171,7 @@ def _make_manual_stages(subject_subdir):
         doc_md="Please run the RANO Monitoring tool to validate the existing segmentations or make manual corrections. "
         "This task will be successful once the finalized file is in the proper directory.",
         timeout=1,
+        fs_conn_id="local_fs",
     )
 
     check_brain_mask_changed = dummy_operator_factory(
