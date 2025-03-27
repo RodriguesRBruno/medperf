@@ -365,7 +365,8 @@ def make_pipeline_for_subject(subject_subdir):
             task_id=RANOTaskIDs.EXTRACT_BRAIN,
         ),
         RANOStage(
-            "extract_tumor" "--subject-subdir",
+            "extract_tumor",
+            "--subject-subdir",
             subject_subdir,
             task_display_name="Extract Tumor",
             task_id=RANOTaskIDs.EXTRACT_TUMOR,
