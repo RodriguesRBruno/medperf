@@ -8,9 +8,11 @@ from utils import (
     create_legal_id,
     dummy_operator_factory,
     docker_operator_factory,
-    RANOStage
+    RANOStage,
+    RANOTaskIDs,
 )
 from datetime import datetime
+
 
 _SUBJECT_SUBDIRS = read_subject_directories()
 
@@ -26,8 +28,12 @@ with DAG(
 
     with TaskGroup(group_id="report_creation_stage") as report_stage:
         report = docker_operator_factory(
-            RANOStage(command='create_report', task_display_name='Create Report Stage')
+            RANOStage(
+                command="create_report",
+                task_display_name="Create Report Stage",
+                task_id=RANOTaskIDs.CREATE_REPORT,
             )
+        )
 
     with TaskGroup(
         group_id="finalizing_dataset_stages",
@@ -36,11 +42,16 @@ with DAG(
     ) as finalizing_stages:
 
         confirmation = dummy_operator_factory(
-            dummy_id="confirmation_stage", dummy_display_name="DUMMY Confirmation"
+            dummy_id=RANOTaskIDs.CONFIRMATION_STAGE,
+            dummy_display_name="DUMMY Confirmation",
         )
 
         consolidation = docker_operator_factory(
-            RANOStage(command='consolidation_stage', task_display_name='Consolidation Stage')
+            RANOStage(
+                command="consolidation_stage",
+                task_display_name="Consolidation Stage",
+                task_id=RANOTaskIDs.CONSOLIDATION_STAGE,
+            )
         )
 
         confirmation >> consolidation
@@ -57,4 +68,4 @@ with DAG(
             ) as this_task_group:
                 make_pipeline_for_subject(subject_subdir)
 
-            report_stage >> this_task_group  >> finalizing_stages
+            report_stage >> this_task_group >> finalizing_stages
