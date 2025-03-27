@@ -25,6 +25,9 @@ class RANOTaskIDs:
     UPDATE_REPORT_AFTER_MANUAL = "update_report_after_manual"
     SEGMENT_COMPARISON = "segment_comparison"
     SEGMENTATIONS_VALIDATED = "segmentations_validated"
+    VALIDATE_SEGMENTATIONS_STATE = "validate_state"
+    CHECK_BRAIN_MASK = "check_brain_mask"
+    BRAIN_MASK_CHANGED_BRANCH = "brain_mask_changed"
     CLEAR_RETURN_TO_BRAIN_EXTRACT = "clear_return_to_brain_extract"
     RETURN_TO_BRAIN_EXTRACT = "return_to_brain_extract"
     CLEAR_RETURN_TO_SEGMENTATIONS_VALIDATED = "clear_return_to_segmentations_validated"
@@ -180,7 +183,11 @@ def _make_manual_stages(subject_subdir):
     )
     BRAIN_MASK_CHANGED_FILE = os.path.join(TUMOR_MASKS_DIR, "tumor_mask_changed.json")
 
-    @task(task_id="validate_state", trigger_rule=TriggerRule.ALL_FAILED)
+    @task(
+        task_id=RANOTaskIDs.VALIDATE_SEGMENTATIONS_STATE,
+        trigger_rule=TriggerRule.ALL_FAILED,
+        task_display_name="Validate Upstream State",
+    )
     def validate_segmentations_state(
         dag_run: DagRun = None, task_instance: TaskInstance = None
     ):
@@ -213,12 +220,15 @@ def _make_manual_stages(subject_subdir):
         "manual_annotation",
         "--subject-subdir",
         subject_subdir,
-        task_id="check_brain_mask",
+        task_id=RANOTaskIDs.CHECK_BRAIN_MASK,
         task_display_name="Check Brain Mask",
     )
     check_brain_mask_changed = docker_operator_factory(check_brain_mask_changed_stage)
 
-    @task.branch(task_id="brain_mask_changed", task_display_name="Brain Mask Changed?")
+    @task.branch(
+        task_id=RANOTaskIDs.BRAIN_MASK_CHANGED_BRANCH,
+        task_display_name="Brain Mask Changed?",
+    )
     def brain_mask_changed(task_instance: TaskInstance = None):
         if not os.path.exists(BRAIN_MASK_CHANGED_FILE):
             brain_mask_changed = False
