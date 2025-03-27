@@ -344,7 +344,8 @@ def make_pipeline_for_subject(subject_subdir):
 
     AUTO_STAGES = [
         RANOStage(
-            "make_csv" "--subject-subdir",
+            "make_csv",
+            "--subject-subdir",
             subject_subdir,
             task_display_name="Make CSV",
             task_id=RANOTaskIDs.MAKE_CSV,
