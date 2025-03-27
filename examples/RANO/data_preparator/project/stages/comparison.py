@@ -8,7 +8,7 @@ import numpy as np
 import nibabel as nib
 
 from .row_stage import RowStage
-from .utils import get_id_tp, update_row_with_dict, md5_file
+from .utils import get_id_tp, update_row_with_dict, md5_file, load_report
 from .constants import TUMOR_MASK_FOLDER, INTERIM_FOLDER
 from .mlcube_constants import COMPARISON_STAGE_STATUS
 
@@ -126,14 +126,19 @@ class SegmentationComparisonStage(RowStage):
 
         prev_hash = report.loc[index]["segmentation_hash"]
         hash_changed = prev_hash != reviewed_hash
-        print(f"{path_exists=} and {contains_case=} and {gt_path_exists=} and {hash_changed=}")
+        print(
+            f"{path_exists=} and {contains_case=} and {gt_path_exists=} and {hash_changed=}"
+        )
         is_valid = path_exists and contains_case and gt_path_exists and hash_changed
 
         return is_valid
 
     def execute(
-        self, index: Union[str, int], report: DataFrame
+        self, index: Union[str, int], report: DataFrame = None
     ) -> Tuple[DataFrame, bool]:
+        if report is None:
+            report = load_report(use_lock=True)
+
         path = self.__get_input_path(index)
         cases = os.listdir(path)
 
@@ -147,9 +152,7 @@ class SegmentationComparisonStage(RowStage):
 
         if not os.path.exists(gt_file):
             # Ground truth file not found, reviewed file most probably renamed
-            report = self.__report_gt_not_found(
-                index, report, reviewed_hash
-            )
+            report = self.__report_gt_not_found(index, report, reviewed_hash)
             return report, False
 
         reviewed_img = nib.load(reviewed_file)

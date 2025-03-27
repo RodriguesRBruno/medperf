@@ -23,7 +23,7 @@ class RANOTaskIDs:
     EXTRACT_BRAIN = "extract_brain"
     EXTRACT_TUMOR = "extract_tumor"
     UPDATE_REPORT_AFTER_MANUAL = "update_report_after_manual"
-    SEGMENT_COMPARISON = "segment_comparison"
+    SEGMENT_COMPARISON = "segmentation_comparison"
     SEGMENTATIONS_VALIDATED = "segmentations_validated"
     VALIDATE_SEGMENTATIONS_STATE = "validate_state"
     CHECK_BRAIN_MASK = "check_brain_mask"
@@ -369,10 +369,6 @@ def make_pipeline_for_subject(subject_subdir):
         ),
     ]
 
-    _UNIMPLEMENTED_STAGES = [
-        RANOTaskIDs.UPDATE_REPORT_AFTER_MANUAL,
-        RANOTaskIDs.SEGMENT_COMPARISON,
-    ]
     prev_task = None
     for stage in AUTO_STAGES:
         curr_task = docker_operator_factory(stage)
@@ -380,18 +376,19 @@ def make_pipeline_for_subject(subject_subdir):
             prev_task >> curr_task
         prev_task = curr_task
 
-    segmentation_validation_stage = _make_manual_stages(subject_subdir)
+    segmentation_validation = _make_manual_stages(subject_subdir)
     if prev_task is not None:
-        prev_task >> segmentation_validation_stage
-    prev_task = segmentation_validation_stage
+        prev_task >> segmentation_validation
 
-    for unimplemented_stage in _UNIMPLEMENTED_STAGES:
-        curr_task = dummy_operator_factory(unimplemented_stage)
-        if prev_task is segmentation_validation_stage:
-            prev_task >> Label("Reviewed") >> curr_task
-        else:
-            prev_task >> curr_task
-        prev_task = curr_task
+    segment_comparison_stage = RANOStage(
+        RANOTaskIDs.SEGMENT_COMPARISON,
+        "--subject-subdir",
+        subject_subdir,
+        task_display_name="Segment Comparison",
+    )
+    segment_comparison = docker_operator_factory(segment_comparison_stage)
+
+    segmentation_validation >> Label("Reviwed") >> segment_comparison
 
 
 def create_legal_id(subject_slash_timepoint, restrictive=False):
