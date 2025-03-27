@@ -1,8 +1,6 @@
 from .row_stage import RowStage
 from .CreateCSVForDICOMs import CSVCreator
 from .utils import update_row_with_dict, get_id_tp
-from pathlib import Path
-
 import pandas as pd
 from typing import Union, Tuple
 import os

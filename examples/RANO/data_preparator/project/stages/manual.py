@@ -12,7 +12,9 @@ from .utils import (
     set_files_read_only,
     copy_files,
     md5_file,
+    load_report,
 )
+import time
 
 
 class ManualStage(RowStage):
@@ -110,12 +112,12 @@ class ManualStage(RowStage):
         path = self.__get_output_path(index)
         data_path = report.loc[index, "data_path"]
 
+        error_msg = f"Multiple files were identified in the labels path: {cases}. Please ensure that there is only the manually corrected segmentation file."
         report_data = {
             "status": -self.status_code - 0.1,  # -5.1
             "data_path": data_path,
             "labels_path": path,
-            "comment": f"Multiple files were identified in the labels path: {cases}. "
-            + "Please ensure that there is only the manually corrected segmentation file.",
+            "comment": error_msg,
         }
         update_row_with_dict(report, report_data, index)
         return report
@@ -185,6 +187,47 @@ class ManualStage(RowStage):
         )
         return segmentation_exists and (not annotation_exists or brain_mask_changed)
 
+    def prepare_directories(self, index: Union[str, int]) -> Tuple[str, str]:
+        # Generate a hidden copy of the baseline segmentations
+        in_path, brain_path = self.__get_input_paths(index)
+        out_path = self.__get_output_path(index)
+        under_review_path = self.__get_under_review_path(index)
+        bak_path = self.__get_backup_path(index)
+        if not os.path.exists(bak_path):
+            copy_files(in_path, bak_path)
+            set_files_read_only(bak_path)
+        # os.makedirs(under_review_path, exist_ok=True)
+        # os.makedirs(out_path, exist_ok=True)
+
+        return out_path, brain_path
+
+    @staticmethod
+    def check_brain_mask_changed(
+        index: Union[str, int],
+        brain_path: str,
+        report: pd.DataFrame,
+    ) -> Tuple[bool, str]:
+        brain_mask_hash = ""
+        if os.path.exists(brain_path):
+            brain_mask_hash = md5_file(brain_path)
+
+        expected_brain_mask_hash = report.loc[index, "brain_mask_hash"]
+        brain_mask_changed = brain_mask_hash != expected_brain_mask_hash
+        return brain_mask_changed, brain_mask_hash
+
+    def check_finalized_cases(
+        self, index: Union[str, int], report: pd.DataFrame, out_path: str
+    ):
+        cases = os.listdir(out_path)
+
+        if len(cases) > 1:
+            # Found more than one reviewed case
+            return self.__report_multiple_cases_error(index, report, cases), False
+        elif not len(cases):
+            # Found no cases yet reviewed
+            return self.__report_step_missing(index, report), False
+        return self.__report_success(index, report), True
+
     def execute(
         self, index: Union[str, int], report: pd.DataFrame = None
     ) -> Tuple[pd.DataFrame, bool]:
@@ -201,38 +244,20 @@ class ManualStage(RowStage):
         """
 
         # Generate a hidden copy of the baseline segmentations
-        in_path, brain_path = self.__get_input_paths(index)
-        out_path = self.__get_output_path(index)
-        under_review_path = self.__get_under_review_path(index)
-        bak_path = self.__get_backup_path(index)
-        if not os.path.exists(bak_path):
-            copy_files(in_path, bak_path)
-            set_files_read_only(bak_path)
-        os.makedirs(under_review_path, exist_ok=True)
-        os.makedirs(out_path, exist_ok=True)
+        out_path, brain_path = self.prepare_directories(index)
 
-        cases = os.listdir(out_path)
-
-        brain_mask_hash = ""
-        if os.path.exists(brain_path):
-            brain_mask_hash = md5_file(brain_path)
-
-        if report is not None:
-            expected_brain_mask_hash = report.loc[index, "brain_mask_hash"]
-            brain_mask_changed = brain_mask_hash != expected_brain_mask_hash
-        else:
-            brain_mask_changed = False  # TODO formally implement this check!!
-
+        if report is None:
+            report = load_report()
+        brain_mask_changed, brain_mask_hash = self.check_brain_mask_changed(
+            index, brain_path, report
+        )
         if brain_mask_changed:
             # Found brain mask changed
             self.__rollback(index)
             # Label this as able to continue
             return self.__report_rollback(index, report, brain_mask_hash), True
 
-        if len(cases) > 1:
-            # Found more than one reviewed case
-            return self.__report_multiple_cases_error(index, report, cases), False
-        elif not len(cases):
-            # Found no cases yet reviewed
-            return self.__report_step_missing(index, report), False
-        return self.__report_success(index, report), True
+        self.check_finalized_cases(index, report, out_path)
+        raise ValueError(
+            "Brain Mask Unchanged"
+        )  # Cause pipeline failure; on Airflow, this will go to a branch that retries finding the finalized file

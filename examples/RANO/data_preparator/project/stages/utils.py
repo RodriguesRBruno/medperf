@@ -115,13 +115,22 @@ def unnormalize_path(path: str, parent: str) -> str:
     return os.path.join(parent, path)
 
 
-def load_report(report_path: str = None) -> pd.DataFrame:
-    report_path = report_path or REPORT_PATH
-
+def _really_load_report(report_path: str):
     with open(report_path, "r") as f:
         report_data = yaml.safe_load(f)
 
     report_df = pd.DataFrame(report_data)
+    return report_df
+
+
+def load_report(report_path: str = None, use_lock: bool = False) -> pd.DataFrame:
+    report_path = report_path or REPORT_PATH
+
+    if not use_lock:
+        with SoftFileLock(REPORT_LOCK) as lock:
+            report_df = _really_load_report(report_path)
+    else:
+        report_df = _really_load_report(report_path)
 
     return report_df
 
@@ -141,16 +150,24 @@ def normalize_report_paths(report: DataFrame) -> DataFrame:
     return report
 
 
-def write_report(report: DataFrame, filepath: str = None):
+def _really_write_report(filepath, report_dict):
+    temp_path = Path(filepath).parent / ".report.yaml"
+    with open(temp_path, "w") as f:
+        yaml.dump(report_dict, f)
+    os.rename(temp_path, filepath)
+
+
+def write_report(report: DataFrame, filepath: str = None, use_lock: bool = False):
     filepath = filepath or REPORT_PATH
     report = normalize_report_paths(report)
     report_dict = report.to_dict()
 
     # Use a temporary file to avoid quick writes collisions and corruption
-    temp_path = Path(filepath).parent / ".report.yaml"
-    with open(temp_path, "w") as f:
-        yaml.dump(report_dict, f)
-    os.rename(temp_path, filepath)
+    if not use_lock:
+        with SoftFileLock(REPORT_LOCK) as lock:
+            _really_write_report(filepath, report_dict)
+    else:
+        _really_write_report(filepath, report_dict)
 
 
 def update_row_with_dict(df, d, idx):  # TODO remove df arg everywhere
@@ -160,12 +177,12 @@ def update_row_with_dict(df, d, idx):  # TODO remove df arg everywhere
     start = perf_counter()
 
     with SoftFileLock(REPORT_LOCK, timeout=-1) as lock:
-        df = load_report()
+        df = load_report(use_lock=True)
 
         for key in d.keys():
             df.loc[idx, key] = d.get(key)
 
-            write_report(df, REPORT_PATH)
+            write_report(df, REPORT_PATH, use_lock=True)
 
     end = perf_counter()
     print(f"Updated report after {round(end-start,2)}s")

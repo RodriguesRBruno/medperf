@@ -157,7 +157,12 @@ class ExtractNnUNet(Extract):
         images_for_fusion = []
         out_path = os.path.join(self.out_path, "DataForQC", id, tp)
         out_pred_path = os.path.join(out_path, "TumorMasksForQC")
-        os.makedirs(out_pred_path, exist_ok=True)
+        finalized_path = os.path.join(out_pred_path, "finalized")
+        under_review_path = os.path.join(out_pred_path, "under_review")
+
+        for path_to_create in [out_pred_path, finalized_path, under_review_path]:
+            os.makedirs(path_to_create, exist_ok=True)
+
         for i, model in enumerate(models):
             order = self.__get_mod_order(model)
             tmp_data_path, tmp_out_path, input_modalities = self.__prepare_case(

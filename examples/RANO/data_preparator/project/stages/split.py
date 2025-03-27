@@ -7,7 +7,7 @@ import math
 from .dset_stage import DatasetStage
 from .utils import get_id_tp, cleanup_storage, get_subdirectories
 from .mlcube_constants import DONE_STAGE_STATUS
-from .constants import INTERIM_FOLDER, TUMOR_MASK_FOLDER
+from .constants import TUMOR_MASK_FOLDER
 
 
 def row_to_path(row: pd.Series) -> str:
@@ -62,16 +62,13 @@ class SplitStage(DatasetStage):
         return True
 
     def __report_success(self, report: pd.DataFrame) -> pd.DataFrame:
-        from filelock import SoftFileLock
-        from .env_vars import REPORT_LOCK
         from .utils import load_report, write_report
 
-        with SoftFileLock(REPORT_LOCK, timeout=-1) as lock:
-            if report is None:
-                report = load_report()
+        if report is None:
+            report = load_report()
 
-            report["status"] = self.status_code
-            write_report(report)
+        report["status"] = self.status_code
+        write_report(report)
 
         return report
 
@@ -110,9 +107,7 @@ class SplitStage(DatasetStage):
         train_pct = params["train_percent"]
 
         finalized_subjects = self._find_finalized_subjects()
-        print(f"{finalized_subjects=}")
         split_df = pd.DataFrame(finalized_subjects)
-        print(split_df)
         subjects = split_df["SubjectID"].drop_duplicates()
         subjects = subjects.sample(frac=1, random_state=seed)
         train_size = math.floor(len(subjects) * train_pct)
