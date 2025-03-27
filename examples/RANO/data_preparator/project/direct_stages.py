@@ -156,20 +156,6 @@ def extract_tumor(
 def manual_annotation(
     subject_subdir: str = typer.Option(..., "--subject-subdir"),
 ):
-    # TODO formally implement/integrate with existing RANO tool! Currently just moves existing masks into finalized dir
-    import shutil
-    from stages.utils import copy_files
-
-    prev_stage_segmentation_dir = os.path.join(
-        DATA_DIR, TUMOR_PATH, "DataForQC", subject_subdir, "TumorMasksForQC"
-    )
-    finalized_dir = os.path.join(prev_stage_segmentation_dir, "finalized")
-    print(f"{prev_stage_segmentation_dir=}")
-    print(f"{finalized_dir=}")
-    if os.path.exists(finalized_dir):
-        print("finalized dir exists, deleting...")
-        shutil.rmtree(finalized_dir, ignore_errors=True)
-    copy_files(prev_stage_segmentation_dir, finalized_dir)
 
     from stages.manual import ManualStage
 
