@@ -175,6 +175,27 @@ def manual_annotation(
     manual_validation.execute(subject_index)
 
 
+@app.command("segmentation_comparison")
+def segmentation_comparison(
+    subject_subdir: str = typer.Option(..., "--subject-subdir"),
+):
+    from stages.comparison import SegmentationComparisonStage
+
+    csv_path = get_data_csv_filepath(subject_subdir)
+    prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH)
+    labels_out = os.path.join(DATA_DIR, "labels")
+    backup_out = os.path.join(labels_out, TUMOR_BACKUP_PATH)  # TODO validate this path
+
+    segment_compare = SegmentationComparisonStage(
+        data_csv=csv_path,
+        out_path=labels_out,
+        prev_stage_path=prev_stage_path,
+        backup_path=backup_out,
+    )
+    subject_index = convert_path_to_index(subject_subdir)
+    segment_compare.execute(subject_index)
+
+
 @app.command("consolidation_stage")
 def consolidation_stage(keep_files: bool = typer.Option(False, "--keep-files")):
     from stages.split import SplitStage
