@@ -75,12 +75,14 @@ x-airflow-common:
     WORKSPACE_DIRECTORY: ${WORKSPACE_DIRECTORY}
     PROJECT_DIRECTORY: ${PROJECT_DIRECTORY}
     AIRFLOW_INPUT_DATA_DIR: /input_data
+    AIRFLOW_DATA_DIR: /data
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${INPUT_DATA_DIR}:/input_data
+    - ${DATA_DIR}:/data
     - /var/run/docker.sock:/var/run/docker.sock:rw
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
