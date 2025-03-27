@@ -41,9 +41,12 @@ with DAG(
         default_args={"trigger_rule": TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS},
     ) as finalizing_stages:
 
-        confirmation = dummy_operator_factory(
-            dummy_id=RANOTaskIDs.CONFIRMATION_STAGE,
-            dummy_display_name="DUMMY Confirmation",
+        confirmation = docker_operator_factory(
+            RANOStage(
+                command="confirmation_stage",
+                task_display_name="Confirmation Stage",
+                task_id=RANOTaskIDs.CONFIRMATION_STAGE,
+            )
         )
 
         consolidation = docker_operator_factory(

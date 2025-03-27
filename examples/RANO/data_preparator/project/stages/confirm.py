@@ -9,7 +9,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from .dset_stage import DatasetStage
-from .utils import get_id_tp, cleanup_storage
+from .utils import get_id_tp, cleanup_storage, load_report
 from .constants import TUMOR_MASK_FOLDER, INTERIM_FOLDER, FINAL_FOLDER
 from .mlcube_constants import CONFIRM_STAGE_STATUS
 
@@ -17,19 +17,15 @@ from .mlcube_constants import CONFIRM_STAGE_STATUS
 class ConfirmStage(DatasetStage):
     def __init__(
         self,
-        data_csv: str,
         out_data_path: str,
         out_labels_path: str,
         prev_stage_path: str,
         backup_path: str,
-        staging_folders: List[str],
     ):
-        self.data_csv = data_csv
         self.out_data_path = out_data_path
         self.out_labels_path = out_labels_path
         self.prev_stage_path = prev_stage_path
         self.backup_path = backup_path
-        self.staging_folders = staging_folders
         self.prompt_file = ".prompt.txt"
         self.response_file = ".response.txt"
 
@@ -74,7 +70,6 @@ class ConfirmStage(DatasetStage):
             + "[Y]/n"
         )
 
-        # user_input = input(msg).lower()
         prompt_path = os.path.join(self.out_data_path, self.prompt_file)
         response_path = os.path.join(self.out_data_path, self.response_file)
 
@@ -135,10 +130,15 @@ class ConfirmStage(DatasetStage):
         if prev_path_exists:
             empty_prev_path = len(os.listdir(self.prev_stage_path)) == 0
 
-        print(f"{prev_path_exists=} and not {empty_prev_path=} and not {missing_voxels=}")
+        print(
+            f"{prev_path_exists=} and not {empty_prev_path=} and not {missing_voxels=}"
+        )
         return prev_path_exists and not empty_prev_path and not missing_voxels
 
-    def execute(self, report: DataFrame) -> Tuple[DataFrame, bool]:
+    def execute(self, report: DataFrame = None) -> Tuple[DataFrame, bool]:
+        if report is None:
+            report = load_report()
+
         exact_match_percent = (report["num_changed_voxels"] == 0).sum() / len(report)
         confirmed = self.__confirm(exact_match_percent)
 
@@ -147,9 +147,4 @@ class ConfirmStage(DatasetStage):
             return report, False
 
         report = report.apply(self.__process_row, axis=1)
-        # Remove all intermediary steps
-        cleanup_storage(self.staging_folders)
-        if os.path.exists(self.data_csv):
-            os.remove(self.data_csv)
-
         return report, True
