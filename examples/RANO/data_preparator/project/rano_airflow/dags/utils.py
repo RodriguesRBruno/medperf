@@ -11,8 +11,9 @@ from airflow.models.dag import DAG
 from airflow.models.taskinstance import TaskInstance
 from airflow.utils.session import provide_session, NEW_SESSION
 from airflow.utils.state import State
+from airflow.utils.edgemodifier import Label
 from airflow.exceptions import AirflowSkipException
-import time
+import json
 
 
 class RANOTaskIDs:
@@ -165,15 +166,19 @@ def _make_manual_stages(subject_subdir):
     ANNOTATED_FILE_NAME = (
         f"{'_'.join(subject_subdir.split(os.sep))}_tumorMask_model_0.nii.gz"
     )
-    CONFIRMED_ANNOTATION_FILE = os.path.join(
+    TUMOR_MASKS_DIR = os.path.join(
         AIRFLOW_DATA_DIR,
         "tumor_extracted",
         "DataForQC",
         subject_subdir,
         "TumorMasksForQC",
+    )
+    CONFIRMED_ANNOTATION_FILE = os.path.join(
+        TUMOR_MASKS_DIR,
         "finalized",
         ANNOTATED_FILE_NAME,
     )
+    BRAIN_MASK_CHANGED_FILE = os.path.join(TUMOR_MASKS_DIR, "tumor_mask_changed.json")
 
     @task(task_id="validate_state", trigger_rule=TriggerRule.ALL_FAILED)
     def validate_segmentations_state(
@@ -208,21 +213,34 @@ def _make_manual_stages(subject_subdir):
         "manual_annotation",
         "--subject-subdir",
         subject_subdir,
-        task_id="brain_mask_changed",
-        task_display_name="Brain Mask Changed?",
+        task_id="check_brain_mask",
+        task_display_name="Check Brain Mask",
     )
     check_brain_mask_changed = docker_operator_factory(check_brain_mask_changed_stage)
-    # check_brain_mask_changed = dummy_operator_factory(
-    #     dummy_id="brain_mask_changed",
-    #     dummy_display_name="Brain Mask Changed?",
-    #     trigger_rule=TriggerRule.ALL_SUCCESS,
-    #     # on_failure_callback=_return_to_brain_extract,
-    #     # on_success_callback=_return_to_segmentations_validated,
-    # )
+
+    @task.branch(task_id="brain_mask_changed", task_display_name="Brain Mask Changed?")
+    def brain_mask_changed(task_instance: TaskInstance = None):
+        if not os.path.exists(BRAIN_MASK_CHANGED_FILE):
+            brain_mask_changed = False
+
+        else:
+            with open(BRAIN_MASK_CHANGED_FILE, "r") as f:
+                brain_mask_changed = json.load(f)
+
+        if brain_mask_changed:
+            next_task_id = _get_task_of_same_subject_by_short_id(
+                task_instance, RANOTaskIDs.CLEAR_RETURN_TO_BRAIN_EXTRACT
+            )
+        else:
+            next_task_id = _get_task_of_same_subject_by_short_id(
+                task_instance, RANOTaskIDs.CLEAR_RETURN_TO_SEGMENTATIONS_VALIDATED
+            )
+
+        return [next_task_id]
 
     @task(
-        trigger_rule=TriggerRule.ALL_SUCCESS,
         task_id=RANOTaskIDs.CLEAR_RETURN_TO_BRAIN_EXTRACT,
+        task_display_name="Clear Downstream",
     )
     def clear_return_to_brain_extract(
         dag_run: DagRun = None,
@@ -237,7 +255,10 @@ def _make_manual_stages(subject_subdir):
             include_downstream=False,
         )
 
-    @task(task_id=RANOTaskIDs.RETURN_TO_BRAIN_EXTRACT)
+    @task(
+        task_id=RANOTaskIDs.RETURN_TO_BRAIN_EXTRACT,
+        task_display_name="Return to Brain Extraction",
+    )
     def return_to_brain_extract(
         dag_run: DagRun = None,
         dag: DAG = None,
@@ -252,8 +273,8 @@ def _make_manual_stages(subject_subdir):
         )
 
     @task(
-        trigger_rule=TriggerRule.ALL_FAILED,
         task_id=RANOTaskIDs.CLEAR_RETURN_TO_SEGMENTATIONS_VALIDATED,
+        task_display_name="Clear Downstream",
     )
     def clear_return_to_file_sensor(
         dag_run: DagRun = None,
@@ -268,7 +289,10 @@ def _make_manual_stages(subject_subdir):
             include_downstream=False,
         )
 
-    @task(task_id=RANOTaskIDs.RETURN_TO_SEGMENTATIONS_VALIDATED)
+    @task(
+        task_id=RANOTaskIDs.RETURN_TO_SEGMENTATIONS_VALIDATED,
+        task_display_name="Return to Segmentatins Validate",
+    )
     def return_to_file_sensor(
         dag_run: DagRun = None,
         dag: DAG = None,
@@ -282,17 +306,26 @@ def _make_manual_stages(subject_subdir):
             include_downstream=True,
         )
 
+    brain_mask_changed_instance = brain_mask_changed()
     (
         segmentations_validated
+        >> Label("NOT reviewed")
         >> validate_segmentations_state()
         >> check_brain_mask_changed
+        >> brain_mask_changed_instance
     )
     (
-        check_brain_mask_changed
+        brain_mask_changed_instance
+        >> Label("Yes")
         >> clear_return_to_brain_extract()
         >> return_to_brain_extract()
     )
-    check_brain_mask_changed >> clear_return_to_file_sensor() >> return_to_file_sensor()
+    (
+        brain_mask_changed_instance
+        >> Label("No")
+        >> clear_return_to_file_sensor()
+        >> return_to_file_sensor()
+    )
 
     return segmentations_validated
 
@@ -344,7 +377,10 @@ def make_pipeline_for_subject(subject_subdir):
 
     for unimplemented_stage in _UNIMPLEMENTED_STAGES:
         curr_task = dummy_operator_factory(unimplemented_stage)
-        prev_task >> curr_task
+        if prev_task is segmentation_validation_stage:
+            prev_task >> Label("Reviewed") >> curr_task
+        else:
+            prev_task >> curr_task
         prev_task = curr_task
 
 

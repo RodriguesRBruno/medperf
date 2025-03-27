@@ -2,7 +2,7 @@ from typing import Union, Tuple
 import pandas as pd
 import os
 import shutil
-
+import json
 from .row_stage import RowStage
 from .constants import TUMOR_MASK_FOLDER, INTERIM_FOLDER, FINAL_FOLDER
 from .mlcube_constants import MANUAL_STAGE_STATUS
@@ -50,6 +50,18 @@ class ManualStage(RowStage):
         id, tp = get_id_tp(index)
         path = os.path.join(
             self.out_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER, "under_review"
+        )
+        return path
+
+    def __get_brain_mask_changed_filepath(self, index: Union[str, int]):
+        id, tp = get_id_tp(index)
+        path = os.path.join(
+            self.out_path,
+            INTERIM_FOLDER,
+            id,
+            tp,
+            TUMOR_MASK_FOLDER,
+            "brain_mask_changed.json",
         )
         return path
 
@@ -201,8 +213,8 @@ class ManualStage(RowStage):
 
         return out_path, brain_path
 
-    @staticmethod
     def check_brain_mask_changed(
+        self,
         index: Union[str, int],
         brain_path: str,
         report: pd.DataFrame,
@@ -213,6 +225,10 @@ class ManualStage(RowStage):
 
         expected_brain_mask_hash = report.loc[index, "brain_mask_hash"]
         brain_mask_changed = brain_mask_hash != expected_brain_mask_hash
+
+        brain_mask_changed_filepath = self.__get_brain_mask_changed_filepath(index)
+        with open(brain_mask_changed_filepath, "w") as f:
+            json.dump(brain_mask_changed, f)
         return brain_mask_changed, brain_mask_hash
 
     def check_finalized_cases(
@@ -251,13 +267,11 @@ class ManualStage(RowStage):
         brain_mask_changed, brain_mask_hash = self.check_brain_mask_changed(
             index, brain_path, report
         )
+
         if brain_mask_changed:
             # Found brain mask changed
             self.__rollback(index)
             # Label this as able to continue
             return self.__report_rollback(index, report, brain_mask_hash), True
 
-        self.check_finalized_cases(index, report, out_path)
-        raise ValueError(
-            "Brain Mask Unchanged"
-        )  # Cause pipeline failure; on Airflow, this will go to a branch that retries finding the finalized file
+        return self.check_finalized_cases(index, report, out_path)
