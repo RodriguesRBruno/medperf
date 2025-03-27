@@ -344,28 +344,30 @@ def make_pipeline_for_subject(subject_subdir):
 
     AUTO_STAGES = [
         RANOStage(
-            RANOTaskIDs.MAKE_CSV,
-            "--subject-subdir",
+            "make_csv" "--subject-subdir",
             subject_subdir,
             task_display_name="Make CSV",
+            task_id=RANOTaskIDs.MAKE_CSV,
         ),
         RANOStage(
-            RANOTaskIDs.CONVERT_NIFTI,
+            "convert_nifti",
             "--subject-subdir",
             subject_subdir,
             task_display_name="Convert to NIfTI",
+            task_id=RANOTaskIDs.CONVERT_NIFTI,
         ),
         RANOStage(
-            RANOTaskIDs.EXTRACT_BRAIN,
+            "extract_brain",
             "--subject-subdir",
             subject_subdir,
             task_display_name="Extract Brain",
+            task_id=RANOTaskIDs.EXTRACT_BRAIN,
         ),
         RANOStage(
-            RANOTaskIDs.EXTRACT_TUMOR,
-            "--subject-subdir",
+            "extract_tumor" "--subject-subdir",
             subject_subdir,
             task_display_name="Extract Tumor",
+            task_id=RANOTaskIDs.EXTRACT_TUMOR,
         ),
     ]
 
@@ -381,10 +383,11 @@ def make_pipeline_for_subject(subject_subdir):
         prev_task >> segmentation_validation
 
     segment_comparison_stage = RANOStage(
-        RANOTaskIDs.SEGMENT_COMPARISON,
+        "segmentation_comparison",
         "--subject-subdir",
         subject_subdir,
         task_display_name="Segment Comparison",
+        task_id=RANOTaskIDs.SEGMENT_COMPARISON,
     )
     segment_comparison = docker_operator_factory(segment_comparison_stage)
 
