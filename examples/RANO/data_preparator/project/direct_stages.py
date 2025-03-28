@@ -26,7 +26,7 @@ def create_report():
     from stages.generate_report import GenerateReport
 
     raw_dir = os.path.join(DATA_DIR, "raw")
-    labels_out_dir = os.path.join(DATA_DIR, "labels")
+    labels_out_dir = os.path.join(WORKSPACE_DIR, "labels")
     brain_out = os.path.join(DATA_DIR, BRAIN_PATH)
     tumor_out = os.path.join(DATA_DIR, TUMOR_PATH)
     report_generator = GenerateReport(
@@ -77,7 +77,7 @@ def convert_nifti(
 
     csv_path = get_data_csv_filepath(subject_subdir)
     output_path = os.path.join(DATA_DIR, PREP_PATH)
-    metadata_path = os.path.join(DATA_DIR, "metadata")
+    metadata_path = os.path.join(WORKSPACE_DIR, "metadata")
     os.makedirs(output_path, exist_ok=True)
     os.makedirs(metadata_path, exist_ok=True)
 
@@ -161,9 +161,7 @@ def manual_annotation(
 
     csv_path = get_data_csv_filepath(subject_subdir)
     prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH)
-    backup_out = os.path.join(
-        DATA_DIR, "labels", TUMOR_BACKUP_PATH
-    )  # TODO validate this path
+    backup_out = os.path.join(WORKSPACE_DIR, "labels", TUMOR_BACKUP_PATH)
 
     manual_validation = ManualStage(
         data_csv=csv_path,
@@ -183,7 +181,7 @@ def segmentation_comparison(
 
     csv_path = get_data_csv_filepath(subject_subdir)
     prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH)
-    labels_out = os.path.join(DATA_DIR, "labels")
+    labels_out = os.path.join(WORKSPACE_DIR, "labels")
     backup_out = os.path.join(labels_out, TUMOR_BACKUP_PATH)  # TODO validate this path
 
     segment_compare = SegmentationComparisonStage(
@@ -196,26 +194,50 @@ def segmentation_comparison(
     segment_compare.execute(subject_index)
 
 
+@app.command("confirmation_stage")
+def confirmation_stage():
+    from stages.confirm import ConfirmStage
+
+    prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH)
+    labels_out = os.path.join(WORKSPACE_DIR, "labels")
+    backup_out = os.path.join(labels_out, TUMOR_BACKUP_PATH)  # TODO validate this path
+
+    confirm_stage = ConfirmStage(
+        out_data_path=DATA_DIR,
+        out_labels_path=labels_out,
+        prev_stage_path=prev_stage_path,
+        backup_path=backup_out,
+    )
+    confirm_stage.execute()
+
+
 @app.command("consolidation_stage")
 def consolidation_stage(keep_files: bool = typer.Option(False, "--keep-files")):
     from stages.split import SplitStage
     from stages.utils import get_subdirectories
 
-    labels_out = os.path.join(DATA_DIR, "labels")
+    labels_out = os.path.join(WORKSPACE_DIR, "labels")
     params_path = os.path.join(WORKSPACE_DIR, "parameters.yaml")
     base_finalized_dir = os.path.join(DATA_DIR, TUMOR_PATH, INTERIM_FOLDER)
 
-    print(f"{keep_files=}")
     if keep_files:
         dirs_to_remove = []
     else:
-        dirs_to_keep = {"metadata", "labels"}
-        dirs_to_remove = [
-            os.path.join(DATA_DIR, subdir)
-            for subdir in get_subdirectories(DATA_DIR)
-            if subdir not in dirs_to_keep
+        subdirs_to_remove = [
+            BRAIN_PATH,
+            "csv",
+            PREP_PATH,
+            TUMOR_PATH,
+            "raw",
+            TUMOR_PATH,
+            VALID_PATH,
         ]
+        dirs_to_remove = [
+            os.path.join(DATA_DIR, subdir) for subdir in subdirs_to_remove
+        ]
+        dirs_to_remove.append(os.path.join(WORKSPACE_DIR, ".tmp"))
 
+    print(f"{dirs_to_remove=}")
     split = SplitStage(
         params=params_path,
         data_path=DATA_DIR,
