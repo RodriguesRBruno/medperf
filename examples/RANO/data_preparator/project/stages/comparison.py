@@ -141,7 +141,8 @@ class SegmentationComparisonStage(RowStage):
 
         path = self.__get_input_path(index)
         cases = os.listdir(path)
-
+        print(f"{path=}")
+        print(f"{cases=}")
         match_output_path = self.__get_output_path(index)
         os.makedirs(match_output_path, exist_ok=True)
         # Get the necessary files for match check
@@ -149,7 +150,7 @@ class SegmentationComparisonStage(RowStage):
         reviewed_file = os.path.join(path, cases[0])
         reviewed_hash = md5_file(reviewed_file)
         gt_file = os.path.join(self.__get_backup_path(index), cases[0])
-
+        print(f"{gt_file=}")
         if not os.path.exists(gt_file):
             # Ground truth file not found, reviewed file most probably renamed
             report = self.__report_gt_not_found(index, report, reviewed_hash)

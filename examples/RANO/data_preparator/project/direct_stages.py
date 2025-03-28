@@ -214,7 +214,6 @@ def confirmation_stage():
 @app.command("consolidation_stage")
 def consolidation_stage(keep_files: bool = typer.Option(False, "--keep-files")):
     from stages.split import SplitStage
-    from stages.utils import get_subdirectories
 
     labels_out = os.path.join(WORKSPACE_DIR, "labels")
     params_path = os.path.join(WORKSPACE_DIR, "parameters.yaml")
@@ -235,9 +234,13 @@ def consolidation_stage(keep_files: bool = typer.Option(False, "--keep-files")):
         dirs_to_remove = [
             os.path.join(DATA_DIR, subdir) for subdir in subdirs_to_remove
         ]
-        dirs_to_remove.append(os.path.join(WORKSPACE_DIR, ".tmp"))
+        dirs_to_remove.extend(
+            [
+                os.path.join(WORKSPACE_DIR, ".tmp"),
+                os.path.join(WORKSPACE_DIR, "labels", ".tmp"),
+            ]
+        )
 
-    print(f"{dirs_to_remove=}")
     split = SplitStage(
         params=params_path,
         data_path=DATA_DIR,
