@@ -1,5 +1,0 @@
-load_from:
-  - python_file:
-      relative_path: ../definitions.py
-      working_directory: ../
-      location_name: rano-prep
