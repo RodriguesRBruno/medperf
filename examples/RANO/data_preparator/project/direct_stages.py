@@ -239,7 +239,8 @@ def consolidation_stage(keep_files: bool = typer.Option(False, "--keep-files")):
         dirs_to_remove.extend(
             [
                 os.path.join(WORKSPACE_DIR, ".tmp"),
-                os.path.join(WORKSPACE_DIR, "labels", ".tmp"),
+                os.path.join(labels_out, ".tmp"),
+                os.path.join(labels_out, ".tumor_segmentation_backup"),
             ]
         )
 
