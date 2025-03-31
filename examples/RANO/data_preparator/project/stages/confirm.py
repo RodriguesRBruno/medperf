@@ -144,6 +144,7 @@ class ConfirmStage(DatasetStage):
 
         if not confirmed:
             report = self.__report_failure(report)
+            raise ValueError("Report not accepted by user!")
             return report, False
 
         report = report.apply(self.__process_row, axis=1)
