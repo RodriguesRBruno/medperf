@@ -51,7 +51,7 @@ with DAG(
 
         consolidation = docker_operator_factory(
             RANOStage(
-                command="consolidation_stage",
+                "consolidation_stage",
                 task_display_name="Consolidation Stage",
                 task_id=RANOTaskIDs.CONSOLIDATION_STAGE,
             )

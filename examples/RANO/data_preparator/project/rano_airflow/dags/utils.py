@@ -72,7 +72,7 @@ def docker_operator_factory(rano_stage: RANOStage) -> DockerOperator:
     ]
 
     return DockerOperator(
-        image="rano_docker_stages_v3",
+        image=os.getenv("RANO_DOCKER_IMAGE_NAME"),
         command=[rano_stage.command, *rano_stage.command_args],
         mounts=mounts,
         task_id=rano_stage.task_id,
@@ -160,8 +160,8 @@ def _make_manual_stages(subject_subdir):
     We must also wait for the segmentation files to be approved in non-blocking way (so other tasks can still run)
     This is achieved with the architecture
 
-    FileSensor -Failure--> Check Brain Mask Changed --Sucess (Changed)--> Back to brain extract (via HTTP to API)
-                \                                   \--Failure(Unchanged) --> Back to FileSensor (via HTTP to API)
+    FileSensor -Failure--> Write Brain Mask Changed File --> Brain Mask Changed? --Yes--> Back to brain extract 
+                \                                                                \--No--> Back to FileSensor 
                  \
                   --Success-> Run rest of pipeline
     """
@@ -181,7 +181,6 @@ def _make_manual_stages(subject_subdir):
         "finalized",
         ANNOTATED_FILE_NAME,
     )
-    BRAIN_MASK_CHANGED_FILE = os.path.join(TUMOR_MASKS_DIR, "tumor_mask_changed.json")
 
     @task(
         task_id=RANOTaskIDs.VALIDATE_SEGMENTATIONS_STATE,
@@ -230,6 +229,13 @@ def _make_manual_stages(subject_subdir):
         task_display_name="Brain Mask Changed?",
     )
     def brain_mask_changed(task_instance: TaskInstance = None):
+        BRAIN_MASK_CHANGED_FILE = os.path.join(
+            AIRFLOW_DATA_DIR,
+            "auxiliary_files",
+            subject_subdir,
+            "brain_mask_changed.json",
+        )
+
         if not os.path.exists(BRAIN_MASK_CHANGED_FILE):
             brain_mask_changed = False
 

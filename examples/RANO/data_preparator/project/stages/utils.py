@@ -10,7 +10,7 @@ import pandas as pd
 from filelock import SoftFileLock
 
 from .env_vars import DATA_DIR, REPORT_PATH, REPORT_LOCK, DATA_SUBDIR
-from .mlcube_constants import OUT_CSV
+from .mlcube_constants import OUT_CSV, AUX_FILES_PATH
 
 
 def convert_path_to_index(path: str):
@@ -252,10 +252,10 @@ class MockTqdm(tqdm):
         return lambda *args, **kwargs: None
 
 
-def get_data_csv_dir(subject_subdir):
-    return os.path.join(DATA_DIR, "csv", subject_subdir)
+def get_aux_files_dir(subject_subdir):
+    return os.path.join(DATA_DIR, AUX_FILES_PATH, subject_subdir)
 
 
 def get_data_csv_filepath(subject_subdir):
-    csv_dir = get_data_csv_dir(subject_subdir)
+    csv_dir = get_aux_files_dir(subject_subdir)
     return os.path.join(csv_dir, OUT_CSV)

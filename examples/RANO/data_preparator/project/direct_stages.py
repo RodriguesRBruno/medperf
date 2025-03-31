@@ -3,8 +3,10 @@
 import typer
 import os
 from stages.env_vars import WORKSPACE_DIR, DATA_DIR, INPUT_DIR, REPORT_PATH
-from stages.utils import get_data_csv_dir, get_data_csv_filepath, convert_path_to_index
+from stages.utils import get_aux_files_dir, get_data_csv_filepath, convert_path_to_index
 from stages.mlcube_constants import (
+    RAW_PATH,
+    AUX_FILES_PATH,
     VALID_PATH,
     PREP_PATH,
     BRAIN_PATH,
@@ -25,7 +27,7 @@ app = typer.Typer()
 def create_report():
     from stages.generate_report import GenerateReport
 
-    raw_dir = os.path.join(DATA_DIR, "raw")
+    raw_dir = os.path.join(DATA_DIR, RAW_PATH)
     labels_out_dir = os.path.join(WORKSPACE_DIR, "labels")
     brain_out = os.path.join(DATA_DIR, BRAIN_PATH)
     tumor_out = os.path.join(DATA_DIR, TUMOR_PATH)
@@ -54,7 +56,7 @@ def prepare(
         AddToCSV,
     )
 
-    output_csv_dir = get_data_csv_dir(subject_subdir)
+    output_csv_dir = get_aux_files_dir(subject_subdir)
     os.makedirs(output_csv_dir, exist_ok=True)
     output_csv = get_data_csv_filepath(subject_subdir)
     out_dir = os.path.join(DATA_DIR, VALID_PATH)
@@ -62,7 +64,7 @@ def prepare(
         input_dir=INPUT_DIR,
         output_csv=output_csv,
         out_dir=out_dir,
-        prev_stage_path=INPUT_DIR,  # TODO validate this
+        prev_stage_path=INPUT_DIR,
     )
     subject_index = convert_path_to_index(subject_subdir)
     csv_creator.execute(subject_index)
@@ -84,7 +86,7 @@ def convert_nifti(
     nifti_transform = NIfTITransform(
         data_csv=csv_path,
         out_path=output_path,
-        prev_stage_path=INPUT_DIR,  # TODO validate this
+        prev_stage_path=INPUT_DIR,
         metadata_path=metadata_path,
         data_out=DATA_DIR,
     )
@@ -224,10 +226,10 @@ def consolidation_stage(keep_files: bool = typer.Option(False, "--keep-files")):
     else:
         subdirs_to_remove = [
             BRAIN_PATH,
-            "csv",
+            AUX_FILES_PATH,
             PREP_PATH,
             TUMOR_PATH,
-            "raw",
+            RAW_PATH,
             TUMOR_PATH,
             VALID_PATH,
         ]

@@ -5,7 +5,13 @@ import shutil
 import json
 from .row_stage import RowStage
 from .constants import TUMOR_MASK_FOLDER, INTERIM_FOLDER, FINAL_FOLDER
-from .mlcube_constants import MANUAL_STAGE_STATUS
+from .mlcube_constants import (
+    MANUAL_STAGE_STATUS,
+    UNDER_REVIEW_PATH,
+    FINALIZED_PATH,
+    BRAIN_MASK_CHANGED_FILE,
+    PREP_PATH,
+)
 from .utils import (
     get_id_tp,
     update_row_with_dict,
@@ -13,19 +19,23 @@ from .utils import (
     copy_files,
     md5_file,
     load_report,
+    get_aux_files_dir,
 )
-import time
 
 
 class ManualStage(RowStage):
     def __init__(
-        self, data_csv: str, out_path: str, prev_stage_path: str, backup_path: str
+        self,
+        data_csv: str,
+        out_path: str,
+        prev_stage_path: str,
+        backup_path: str,
     ):
         self.data_csv = data_csv
         self.out_path = out_path
         self.prev_stage_path = prev_stage_path
         self.backup_path = backup_path
-        self.rollback_path = os.path.join(os.path.dirname(out_path), "prepared")
+        self.rollback_path = os.path.join(os.path.dirname(out_path), PREP_PATH)
         self.brain_mask_file = "brainMask_fused.nii.gz"
 
     @property
@@ -49,26 +59,22 @@ class ManualStage(RowStage):
     def __get_under_review_path(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
         path = os.path.join(
-            self.out_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER, "under_review"
+            self.out_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER, UNDER_REVIEW_PATH
         )
         return path
 
     def __get_brain_mask_changed_filepath(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
         path = os.path.join(
-            self.out_path,
-            INTERIM_FOLDER,
-            id,
-            tp,
-            TUMOR_MASK_FOLDER,
-            "brain_mask_changed.json",
+            get_aux_files_dir(os.path.join(id, tp)),
+            BRAIN_MASK_CHANGED_FILE,
         )
         return path
 
     def __get_output_path(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
         path = os.path.join(
-            self.out_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER, "finalized"
+            self.out_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER, FINALIZED_PATH
         )
         return path
 
