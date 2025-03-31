@@ -14,6 +14,7 @@ from airflow.utils.state import State
 from airflow.utils.edgemodifier import Label
 from airflow.exceptions import AirflowSkipException
 import json
+from datetime import timedelta
 
 
 class RANOTaskIDs:
@@ -377,6 +378,10 @@ def make_pipeline_for_subject(subject_subdir):
             subject_subdir,
             task_display_name="Extract Tumor",
             task_id=RANOTaskIDs.EXTRACT_TUMOR,
+            retries=1000,
+            retry_delay=timedelta(minutes=15),
+            retry_exponential_backoff=True,
+            max_retry_delay=timedelta(hours=1),
         ),
     ]
 

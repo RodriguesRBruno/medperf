@@ -6,13 +6,11 @@ from utils import (
     make_pipeline_for_subject,
     read_subject_directories,
     create_legal_id,
-    dummy_operator_factory,
     docker_operator_factory,
     RANOStage,
     RANOTaskIDs,
 )
-from datetime import datetime
-
+from datetime import datetime, timedelta
 
 _SUBJECT_SUBDIRS = read_subject_directories()
 
@@ -54,6 +52,10 @@ with DAG(
                 "consolidation_stage",
                 task_display_name="Consolidation Stage",
                 task_id=RANOTaskIDs.CONSOLIDATION_STAGE,
+                retries=1000,
+                retry_delay=timedelta(minutes=1),
+                retry_exponential_backoff=True,
+                max_retry_delay=timedelta(minutes=15),
             )
         )
 
