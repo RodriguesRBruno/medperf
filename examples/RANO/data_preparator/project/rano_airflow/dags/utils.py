@@ -61,15 +61,16 @@ def _mount_helper(host_dirs: list[str], container_dirs: list[str]):
 def docker_operator_factory(rano_stage: RANOStage) -> DockerOperator:
 
     workspace_host_dir = os.getenv("WORKSPACE_DIRECTORY")
-    project_dir = os.getenv("PROJECT_DIRECTORY")
 
     mounts = [
-        _mount_helper(
-            host_dirs=[workspace_host_dir], container_dirs=["/", "workspace"]
-        ),
-        # TODO remove this after adjusting Docker image
-        _mount_helper(host_dirs=[project_dir], container_dirs=["/", "project"]),
+        _mount_helper(host_dirs=[workspace_host_dir], container_dirs=["/", "workspace"])
     ]
+
+    # Uncomment to mount project directory into the DockerOperator images. Used for development and debugging.
+    # project_dir = os.getenv("PROJECT_DIRECTORY")
+    # mounts.append(
+    #     _mount_helper(host_dirs=[project_dir], container_dirs=["/", "project"])
+    # )
 
     return DockerOperator(
         image=os.getenv("RANO_DOCKER_IMAGE_NAME"),

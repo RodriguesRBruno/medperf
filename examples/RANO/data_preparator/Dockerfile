@@ -32,4 +32,5 @@ ENV CUDA_VISIBLE_DEVICES="0"
 
 COPY ./project /project
 
-ENTRYPOINT ["python", "/project/mlcube.py"]
+ENV WORKSPACE_DIRECTORY='/workspace'
+ENTRYPOINT ["python", "/project/direct_stages.py"]

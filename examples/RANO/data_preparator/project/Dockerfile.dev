@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 rano_after_lint:latest
+FROM local/rano-data-prep-mlcube:1.0.11
 
 COPY ./atlasImage_0.125.nii.gz /project
 COPY ./tmpmodel /project
@@ -14,7 +14,4 @@ RUN rm -rf /project/stages/data_prep_models/brain_extraction/model_1/
 RUN cp -r /project/tmpmodel /project/stages/data_prep_models/brain_extraction/model_0
 RUN mv /project/tmpmodel /project/stages/data_prep_models/brain_extraction/model_1
 
-COPY direct_stages.py /project/direct_stages.py
-
-ENV WORKSPACE_DIRECTORY='/workspace'
 ENTRYPOINT ["python", "/project/direct_stages.py"]
