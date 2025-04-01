@@ -2,15 +2,15 @@ from __future__ import annotations
 from airflow.models.dag import DAG
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.trigger_rule import TriggerRule
+from container_factory import ContainerOperatorFactory
+from rano_stage import RANOStage
 from utils import (
     make_pipeline_for_subject,
     read_subject_directories,
     create_legal_id,
-    docker_operator_factory,
-    RANOStage,
-    RANOTaskIDs,
 )
 from datetime import datetime, timedelta
+import rano_task_ids
 
 _SUBJECT_SUBDIRS = read_subject_directories()
 
@@ -25,11 +25,11 @@ with DAG(
 ) as dag:
 
     with TaskGroup(group_id="report_creation_stage") as report_stage:
-        report = docker_operator_factory(
+        report = ContainerOperatorFactory.get_operator(
             RANOStage(
                 command="create_report",
                 task_display_name="Create Report Stage",
-                task_id=RANOTaskIDs.CREATE_REPORT,
+                task_id=rano_task_ids.CREATE_REPORT,
             )
         )
 
@@ -39,19 +39,19 @@ with DAG(
         default_args={"trigger_rule": TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS},
     ) as finalizing_stages:
 
-        confirmation = docker_operator_factory(
+        confirmation = ContainerOperatorFactory.get_operator(
             RANOStage(
                 command="confirmation_stage",
                 task_display_name="Confirmation Stage",
-                task_id=RANOTaskIDs.CONFIRMATION_STAGE,
+                task_id=rano_task_ids.CONFIRMATION_STAGE,
             )
         )
 
-        consolidation = docker_operator_factory(
+        consolidation = ContainerOperatorFactory.get_operator(
             RANOStage(
                 "consolidation_stage",
                 task_display_name="Consolidation Stage",
-                task_id=RANOTaskIDs.CONSOLIDATION_STAGE,
+                task_id=rano_task_ids.CONSOLIDATION_STAGE,
                 retries=1000,
                 retry_delay=timedelta(minutes=1),
                 retry_exponential_backoff=True,

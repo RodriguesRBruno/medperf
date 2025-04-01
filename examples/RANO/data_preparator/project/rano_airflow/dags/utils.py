@@ -1,10 +1,7 @@
-from airflow.providers.docker.operators.docker import DockerOperator
-from airflow.providers.singularity.operators.singularity import SingularityOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.sensors.filesystem import FileSensor
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.decorators import task
-from docker.types import Mount
 import os
 from airflow.models.dagrun import DagRun
 from airflow.models.dag import DAG
@@ -15,73 +12,11 @@ from airflow.utils.edgemodifier import Label
 from airflow.exceptions import AirflowSkipException
 import json
 from datetime import timedelta
+from container_factory import ContainerOperatorFactory
+from rano_stage import RANOStage
+import rano_task_ids
 
-
-class RANOTaskIDs:
-    CREATE_REPORT = "create_report"
-    MAKE_CSV = "make_csv"
-    CONVERT_NIFTI = "convert_nifti"
-    EXTRACT_BRAIN = "extract_brain"
-    EXTRACT_TUMOR = "extract_tumor"
-    UPDATE_REPORT_AFTER_MANUAL = "update_report_after_manual"
-    SEGMENT_COMPARISON = "segmentation_comparison"
-    SEGMENTATIONS_VALIDATED = "segmentations_validated"
-    VALIDATE_SEGMENTATIONS_STATE = "validate_state"
-    CHECK_BRAIN_MASK = "check_brain_mask"
-    BRAIN_MASK_CHANGED_BRANCH = "brain_mask_changed"
-    CLEAR_RETURN_TO_BRAIN_EXTRACT = "clear_return_to_brain_extract"
-    RETURN_TO_BRAIN_EXTRACT = "return_to_brain_extract"
-    CLEAR_RETURN_TO_SEGMENTATIONS_VALIDATED = "clear_return_to_segmentations_validated"
-    RETURN_TO_SEGMENTATIONS_VALIDATED = "return_to_segmentations_validated"
-    CONFIRMATION_STAGE = "confirmation_stage"
-    CONSOLIDATION_STAGE = "consolidation_stage"
-
-
-class RANOStage:
-    def __init__(
-        self,
-        command: str,
-        *command_args,
-        task_id: str = None,
-        task_display_name: str = None,
-        **operator_kwargs,
-    ):
-        self.command = command
-        self.command_args = command_args
-        self.task_id = task_id or self.command
-        self.task_display_name = (task_display_name or self.task_id) or self.command
-        self.operator_kwargs = operator_kwargs
-
-
-def _mount_helper(host_dirs: list[str], container_dirs: list[str]):
-    host_dir = os.path.join(*host_dirs)
-    container_dir = os.path.join(*container_dirs)
-    return Mount(source=host_dir, target=container_dir, type="bind")
-
-
-def docker_operator_factory(rano_stage: RANOStage) -> DockerOperator:
-
-    workspace_host_dir = os.getenv("WORKSPACE_DIRECTORY")
-
-    mounts = [
-        _mount_helper(host_dirs=[workspace_host_dir], container_dirs=["/", "workspace"])
-    ]
-
-    # Uncomment to mount project directory into the DockerOperator images. Used for development and debugging.
-    # project_dir = os.getenv("PROJECT_DIRECTORY")
-    # mounts.append(
-    #     _mount_helper(host_dirs=[project_dir], container_dirs=["/", "project"])
-    # )
-
-    return DockerOperator(
-        image=os.getenv("RANO_DOCKER_IMAGE_NAME"),
-        command=[rano_stage.command, *rano_stage.command_args],
-        mounts=mounts,
-        task_id=rano_stage.task_id,
-        task_display_name=rano_stage.task_display_name,
-        auto_remove="success",
-        **rano_stage.operator_kwargs,
-    )
+CONTAINER_TYPE = os.getenv("CONTAINER_TYPE")
 
 
 def dummy_operator_factory(
@@ -185,7 +120,7 @@ def _make_manual_stages(subject_subdir):
     )
 
     @task(
-        task_id=RANOTaskIDs.VALIDATE_SEGMENTATIONS_STATE,
+        task_id=rano_task_ids.VALIDATE_SEGMENTATIONS_STATE,
         trigger_rule=TriggerRule.ALL_FAILED,
         task_display_name="Validate Upstream State",
     )
@@ -193,7 +128,7 @@ def _make_manual_stages(subject_subdir):
         dag_run: DagRun = None, task_instance: TaskInstance = None
     ):
         upstream_segmentations_validated_id = _get_task_of_same_subject_by_short_id(
-            task_instance, RANOTaskIDs.SEGMENTATIONS_VALIDATED
+            task_instance, rano_task_ids.SEGMENTATIONS_VALIDATED
         )
         upstream_segmentations_validated_task = dag_run.get_task_instance(
             task_id=upstream_segmentations_validated_id
@@ -207,7 +142,7 @@ def _make_manual_stages(subject_subdir):
 
     segmentations_validated = FileSensor(
         filepath=CONFIRMED_ANNOTATION_FILE,  # TODO can also send directory to return True for any files there. Maybe this is better?
-        task_id=RANOTaskIDs.SEGMENTATIONS_VALIDATED,
+        task_id=rano_task_ids.SEGMENTATIONS_VALIDATED,
         task_display_name="Segmentations Validate",
         mode="reschedule",
         doc_md="Please run the RANO Monitoring tool to validate the existing segmentations or make manual corrections. "
@@ -221,13 +156,15 @@ def _make_manual_stages(subject_subdir):
         "manual_annotation",
         "--subject-subdir",
         subject_subdir,
-        task_id=RANOTaskIDs.CHECK_BRAIN_MASK,
+        task_id=rano_task_ids.CHECK_BRAIN_MASK,
         task_display_name="Check Brain Mask",
     )
-    check_brain_mask_changed = docker_operator_factory(check_brain_mask_changed_stage)
+    check_brain_mask_changed = ContainerOperatorFactory.get_operator(
+        check_brain_mask_changed_stage
+    )
 
     @task.branch(
-        task_id=RANOTaskIDs.BRAIN_MASK_CHANGED_BRANCH,
+        task_id=rano_task_ids.BRAIN_MASK_CHANGED_BRANCH,
         task_display_name="Brain Mask Changed?",
     )
     def brain_mask_changed(task_instance: TaskInstance = None):
@@ -247,17 +184,17 @@ def _make_manual_stages(subject_subdir):
 
         if brain_mask_changed:
             next_task_id = _get_task_of_same_subject_by_short_id(
-                task_instance, RANOTaskIDs.CLEAR_RETURN_TO_BRAIN_EXTRACT
+                task_instance, rano_task_ids.CLEAR_RETURN_TO_BRAIN_EXTRACT
             )
         else:
             next_task_id = _get_task_of_same_subject_by_short_id(
-                task_instance, RANOTaskIDs.CLEAR_RETURN_TO_SEGMENTATIONS_VALIDATED
+                task_instance, rano_task_ids.CLEAR_RETURN_TO_SEGMENTATIONS_VALIDATED
             )
 
         return [next_task_id]
 
     @task(
-        task_id=RANOTaskIDs.CLEAR_RETURN_TO_BRAIN_EXTRACT,
+        task_id=rano_task_ids.CLEAR_RETURN_TO_BRAIN_EXTRACT,
         task_display_name="Clear Downstream",
     )
     def clear_return_to_brain_extract(
@@ -267,14 +204,14 @@ def _make_manual_stages(subject_subdir):
     ):
         _clear_task_from_same_subject(
             base_task=task_instance,
-            other_task_short_name=RANOTaskIDs.RETURN_TO_BRAIN_EXTRACT,
+            other_task_short_name=rano_task_ids.RETURN_TO_BRAIN_EXTRACT,
             dag_run=dag_run,
             dag=dag,
             include_downstream=False,
         )
 
     @task(
-        task_id=RANOTaskIDs.RETURN_TO_BRAIN_EXTRACT,
+        task_id=rano_task_ids.RETURN_TO_BRAIN_EXTRACT,
         task_display_name="Return to Brain Extraction",
     )
     def return_to_brain_extract(
@@ -284,14 +221,14 @@ def _make_manual_stages(subject_subdir):
     ):
         _clear_task_from_same_subject(
             base_task=task_instance,
-            other_task_short_name=RANOTaskIDs.EXTRACT_BRAIN,
+            other_task_short_name=rano_task_ids.EXTRACT_BRAIN,
             dag_run=dag_run,
             dag=dag,
             include_downstream=True,
         )
 
     @task(
-        task_id=RANOTaskIDs.CLEAR_RETURN_TO_SEGMENTATIONS_VALIDATED,
+        task_id=rano_task_ids.CLEAR_RETURN_TO_SEGMENTATIONS_VALIDATED,
         task_display_name="Clear Downstream",
     )
     def clear_return_to_file_sensor(
@@ -301,14 +238,14 @@ def _make_manual_stages(subject_subdir):
     ):
         _clear_task_from_same_subject(
             base_task=task_instance,
-            other_task_short_name=RANOTaskIDs.RETURN_TO_SEGMENTATIONS_VALIDATED,
+            other_task_short_name=rano_task_ids.RETURN_TO_SEGMENTATIONS_VALIDATED,
             dag_run=dag_run,
             dag=dag,
             include_downstream=False,
         )
 
     @task(
-        task_id=RANOTaskIDs.RETURN_TO_SEGMENTATIONS_VALIDATED,
+        task_id=rano_task_ids.RETURN_TO_SEGMENTATIONS_VALIDATED,
         task_display_name="Return to Segmentatins Validate",
     )
     def return_to_file_sensor(
@@ -318,7 +255,7 @@ def _make_manual_stages(subject_subdir):
     ):
         _clear_task_from_same_subject(
             base_task=task_instance,
-            other_task_short_name=RANOTaskIDs.SEGMENTATIONS_VALIDATED,
+            other_task_short_name=rano_task_ids.SEGMENTATIONS_VALIDATED,
             dag_run=dag_run,
             dag=dag,
             include_downstream=True,
@@ -356,28 +293,28 @@ def make_pipeline_for_subject(subject_subdir):
             "--subject-subdir",
             subject_subdir,
             task_display_name="Make CSV",
-            task_id=RANOTaskIDs.MAKE_CSV,
+            task_id=rano_task_ids.MAKE_CSV,
         ),
         RANOStage(
             "convert_nifti",
             "--subject-subdir",
             subject_subdir,
             task_display_name="Convert to NIfTI",
-            task_id=RANOTaskIDs.CONVERT_NIFTI,
+            task_id=rano_task_ids.CONVERT_NIFTI,
         ),
         RANOStage(
             "extract_brain",
             "--subject-subdir",
             subject_subdir,
             task_display_name="Extract Brain",
-            task_id=RANOTaskIDs.EXTRACT_BRAIN,
+            task_id=rano_task_ids.EXTRACT_BRAIN,
         ),
         RANOStage(
             "extract_tumor",
             "--subject-subdir",
             subject_subdir,
             task_display_name="Extract Tumor",
-            task_id=RANOTaskIDs.EXTRACT_TUMOR,
+            task_id=rano_task_ids.EXTRACT_TUMOR,
             retries=1000,
             retry_delay=timedelta(minutes=15),
             retry_exponential_backoff=True,
@@ -387,7 +324,7 @@ def make_pipeline_for_subject(subject_subdir):
 
     prev_task = None
     for stage in AUTO_STAGES:
-        curr_task = docker_operator_factory(stage)
+        curr_task = ContainerOperatorFactory.get_operator(stage)
         if prev_task is not None:
             prev_task >> curr_task
         prev_task = curr_task
@@ -401,9 +338,9 @@ def make_pipeline_for_subject(subject_subdir):
         "--subject-subdir",
         subject_subdir,
         task_display_name="Segment Comparison",
-        task_id=RANOTaskIDs.SEGMENT_COMPARISON,
+        task_id=rano_task_ids.SEGMENT_COMPARISON,
     )
-    segment_comparison = docker_operator_factory(segment_comparison_stage)
+    segment_comparison = ContainerOperatorFactory.get_operator(segment_comparison_stage)
 
     segmentation_validation >> Label("Reviwed") >> segment_comparison
 

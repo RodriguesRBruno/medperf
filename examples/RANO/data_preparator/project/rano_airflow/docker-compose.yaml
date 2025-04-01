@@ -27,6 +27,8 @@ x-airflow-common:
     AIRFLOW_INPUT_DATA_DIR: /input_data
     AIRFLOW_DATA_DIR: /data
     AIRFLOW_CONN_LOCAL_FS: 'file://'
+    CONTAINER_TYPE: ${CONTAINER_TYPE}
+    PYTHONPATH: /opt/airflow/dags/:${PYTHONPATH}
     # Uncomment this and set PROJECT_DIRECTORY in the .env file to mount code files into Airflow. Used for development and debugging.
     # PROJECT_DIRECTORY: ${PROJECT_DIRECTORY}
   volumes:
