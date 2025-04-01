@@ -1,5 +1,3 @@
 rano_airflow/
 .venv/
 __pycache__/
-tmpmodel/
-**.nii.gz
