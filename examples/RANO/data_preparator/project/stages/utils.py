@@ -10,7 +10,8 @@ import pandas as pd
 from filelock import SoftFileLock
 
 from .env_vars import DATA_DIR, REPORT_PATH, REPORT_LOCK, DATA_SUBDIR
-from .mlcube_constants import OUT_CSV, AUX_FILES_PATH
+from .mlcube_constants import OUT_CSV, AUX_FILES_PATH, TUMOR_PATH, FINALIZED_PATH
+from .constants import INTERIM_FOLDER, TUMOR_MASK_FOLDER
 
 
 def convert_path_to_index(path: str):
@@ -259,3 +260,32 @@ def get_aux_files_dir(subject_subdir):
 def get_data_csv_filepath(subject_subdir):
     csv_dir = get_aux_files_dir(subject_subdir)
     return os.path.join(csv_dir, OUT_CSV)
+
+
+def find_finalized_subjects():
+    base_finalized_dir = os.path.join(DATA_DIR, TUMOR_PATH, INTERIM_FOLDER)
+    subject_and_timepoint_list = []
+
+    candidate_subjects = get_subdirectories(base_finalized_dir)
+    for candidate_subject in candidate_subjects:
+        subject_path = os.path.join(base_finalized_dir, candidate_subject)
+        timepoint_dirs = get_subdirectories(subject_path)
+
+        for timepoint in timepoint_dirs:
+            timepoint_complete_path = os.path.join(subject_path, timepoint)
+            finalized_path = os.path.join(
+                timepoint_complete_path, TUMOR_MASK_FOLDER, FINALIZED_PATH
+            )
+            try:
+                path_exists = os.path.exists(finalized_path)
+                path_is_dir = os.path.isdir(finalized_path)
+                only_one_case = len(os.listdir(finalized_path)) == 1
+                if path_exists and path_is_dir and only_one_case:
+                    subject_timepoint_dict = {
+                        "SubjectID": candidate_subject,
+                        "Timepoint": timepoint,
+                    }
+                    subject_and_timepoint_list.append(subject_timepoint_dict)
+            except (FileNotFoundError, OSError):
+                pass
+    return subject_and_timepoint_list

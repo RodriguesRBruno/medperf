@@ -1,15 +1,13 @@
 from typing import Union, Tuple
 import os
-import yaml
 import shutil
 from time import sleep
-from typing import List
 
 import pandas as pd
 from pandas import DataFrame
 
 from .dset_stage import DatasetStage
-from .utils import get_id_tp, cleanup_storage, load_report
+from .utils import get_id_tp, load_report, find_finalized_subjects
 from .constants import TUMOR_MASK_FOLDER, INTERIM_FOLDER, FINAL_FOLDER
 from .mlcube_constants import CONFIRM_STAGE_STATUS
 
@@ -139,7 +137,18 @@ class ConfirmStage(DatasetStage):
         if report is None:
             report = load_report()
 
+        # Keep only valid subjects in report
+        subject_timepoint_list = find_finalized_subjects()
+
+        valid_subjects = [
+            "|".join([item["SubjectID"], item["Timepoint"]])
+            for item in subject_timepoint_list
+        ]
+
+        report = report[report.index.isin(valid_subjects)]
+
         exact_match_percent = (report["num_changed_voxels"] == 0).sum() / len(report)
+
         confirmed = self.__confirm(exact_match_percent)
 
         if not confirmed:
