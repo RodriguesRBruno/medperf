@@ -8,7 +8,7 @@ from subject_datasets import YESTERDAY, REPORT_DATASET
 
 with DAG(
     dag_id="rano_setup",
-    dag_display_name="RANO Pipeline - Initial Setup",
+    dag_display_name="Initial Setup",
     catchup=True,
     max_active_runs=1,
     schedule="@once",

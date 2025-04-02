@@ -23,11 +23,12 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
     dag_id = f"tumor_{create_legal_id(subject_slash_timepoint)}"
     with DAG(
         dag_id=dag_id,
-        dag_display_name=f"RANO Pipeline - Tumor Extraction for {subject_slash_timepoint}",
+        dag_display_name=f"Tumor Extraction",
         max_active_runs=1,
         schedule=[inlet_dataset],
         start_date=YESTERDAY,
         is_paused_upon_creation=False,
+        tags=[subject_slash_timepoint],
     ) as dag:
 
         AUTO_STAGES = [

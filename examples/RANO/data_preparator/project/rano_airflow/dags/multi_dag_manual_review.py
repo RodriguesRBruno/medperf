@@ -52,11 +52,12 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
 
     with DAG(
         dag_id=dag_id,
-        dag_display_name=f"RANO Pipeline - Manual Approval for {subject_slash_timepoint}",
+        dag_display_name=f"Manual Approval",
         max_active_runs=1,
         schedule=[inlet_dataset],
         start_date=YESTERDAY,
         is_paused_upon_creation=False,
+        tags=[subject_slash_timepoint],
     ) as dag:
 
         segmentations_validated = FileSensor(

@@ -8,7 +8,7 @@ from subject_datasets import YESTERDAY, ALL_DONE_DATASETS
 
 with DAG(
     dag_id="rano_end",
-    dag_display_name="RANO Pipeline - Validation and Finish",
+    dag_display_name="Validation and Finish",
     catchup=True,
     max_active_runs=1,
     schedule=ALL_DONE_DATASETS,
