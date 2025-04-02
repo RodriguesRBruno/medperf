@@ -23,7 +23,7 @@ with DAG(
     max_active_runs=1,
     schedule="@once",
     start_date=YESTERDAY,
-    is_paused_upon_creation=False,
+    is_paused_upon_creation=True,
 ) as dag:
 
     with TaskGroup(group_id="report_creation_stage") as report_stage:
