@@ -15,6 +15,7 @@ from datetime import timedelta
 from container_factory import ContainerOperatorFactory
 from rano_stage import RANOStage
 import rano_task_ids
+from collections import defaultdict
 
 CONTAINER_TYPE = os.getenv("CONTAINER_TYPE")
 
@@ -285,7 +286,8 @@ def _make_manual_stages(subject_subdir):
     return segmentations_validated
 
 
-def make_pipeline_for_subject(subject_subdir):
+def make_pipeline_for_subject(subject_id, subject_timepoint):
+    subject_subdir = os.path.join(subject_id, subject_timepoint)
 
     AUTO_STAGES = [
         RANOStage(
@@ -359,13 +361,13 @@ def create_legal_id(subject_slash_timepoint, restrictive=False):
 def read_subject_directories():
     INPUT_DATA_DIR = os.getenv("AIRFLOW_INPUT_DATA_DIR")
 
-    subject_id_timepoint_directories = []
+    subject_id_to_timepoints = defaultdict(lambda: [])
 
     for subject_id_dir in os.listdir(INPUT_DATA_DIR):
         subject_complete_dir = os.path.join(INPUT_DATA_DIR, subject_id_dir)
 
         for timepoint_dir in os.listdir(subject_complete_dir):
             subject_id_timepoint_dir = os.path.join(subject_id_dir, timepoint_dir)
-            subject_id_timepoint_directories.append(subject_id_timepoint_dir)
+            subject_id_to_timepoints[subject_id_dir].append(timepoint_dir)
 
-    return subject_id_timepoint_directories
+    return subject_id_to_timepoints

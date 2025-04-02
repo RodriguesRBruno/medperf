@@ -12,15 +12,17 @@ from utils import (
 from datetime import datetime, timedelta
 import rano_task_ids
 
+YESTERDAY = datetime.today() - timedelta(days=1)
+
 _SUBJECT_SUBDIRS = read_subject_directories()
 
 with DAG(
-    dag_id="rano_pipeline_all_subjects",
+    dag_id="rano_pipeline",
     dag_display_name="RANO Pipeline - All Subjects",
     catchup=True,
     max_active_runs=1,
     schedule="@once",
-    start_date=datetime(2024, 1, 1),
+    start_date=YESTERDAY,
     is_paused_upon_creation=False,
 ) as dag:
 
@@ -62,15 +64,25 @@ with DAG(
         confirmation >> consolidation
 
     with TaskGroup(
-        group_id="Processing_All_Subjects",
+        group_id="Subjects",
         tooltip="Processing tasks for all subjects",
     ) as all_subjects_group:
-        for subject_subdir in _SUBJECT_SUBDIRS:
-            subject_id = create_legal_id(subject_subdir, restrictive=True)
+        for subject_id, timepoint_list in _SUBJECT_SUBDIRS.items():
+            subject_task_group_id = create_legal_id(subject_id, restrictive=True)
 
             with TaskGroup(
-                subject_id, tooltip=f"Tasks for Subject {subject_subdir}"
-            ) as this_task_group:
-                make_pipeline_for_subject(subject_subdir)
+                group_id=subject_task_group_id,
+                tooltip=f"Tasks for Subject ID {subject_id}",
+            ) as subject_task_group:
+                for timepoint in timepoint_list:
+                    timepoint_task_group_id = create_legal_id(
+                        timepoint, restrictive=True
+                    )
 
-            report_stage >> this_task_group >> finalizing_stages
+                    with TaskGroup(
+                        timepoint_task_group_id,
+                        tooltip=f"Tasks for Subject {subject_id}/{timepoint}",
+                    ) as subject_timepoint_task_group:
+                        make_pipeline_for_subject(subject_id, timepoint)
+
+                    report_stage >> subject_timepoint_task_group >> finalizing_stages
