@@ -29,6 +29,7 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
         start_date=YESTERDAY,
         is_paused_upon_creation=False,
         tags=[subject_slash_timepoint],
+        doc_md="Brain and Tumor Extraction stages",
     ) as dag:
 
         AUTO_STAGES = [

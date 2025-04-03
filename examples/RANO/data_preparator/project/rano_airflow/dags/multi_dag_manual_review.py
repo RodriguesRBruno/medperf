@@ -58,14 +58,16 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
         start_date=YESTERDAY,
         is_paused_upon_creation=False,
         tags=[subject_slash_timepoint],
+        doc_md="Manual Stages, please do XYZ",
     ) as dag:
 
         segmentations_validated = FileSensor(
             filepath=CONFIRMED_ANNOTATION_FILE,  # TODO can also send directory to return True for any files there. Maybe this is better?
             task_id=rano_task_ids.SEGMENTATIONS_VALIDATED,
-            task_display_name="Segmentations Validate",
+            task_display_name="Has Tumor Segmentation been reviewed?",
             # mode="reschedule",
-            doc_md="Please run the RANO Monitoring tool to validate the existing segmentations or make manual corrections. "
+            doc_md="This task being marked as Failed means that the Tumor Segmentation has not been reviewed yet."
+            "Please run the RANO Monitoring tool to validate the existing segmentations or make manual corrections. "
             "This task will be successful once the finalized file is in the proper directory.",
             timeout=1,
             fs_conn_id="local_fs",

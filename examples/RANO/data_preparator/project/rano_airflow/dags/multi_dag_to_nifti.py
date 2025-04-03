@@ -27,6 +27,7 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
         start_date=YESTERDAY,
         is_paused_upon_creation=False,
         tags=[subject_slash_timepoint],
+        doc_md="Converting DICOM images to NIfTI",
     ) as dag:
 
         AUTO_STAGES = [
