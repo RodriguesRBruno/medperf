@@ -17,7 +17,7 @@ from subject_datasets import (
 import os
 from airflow.operators.empty import EmptyOperator
 from airflow.utils.trigger_rule import TriggerRule
-from airflow.sensors.filesystem import FileSensor
+from airflow.exceptions import AirflowException
 from airflow.decorators import task
 from airflow.utils.edgemodifier import Label
 import json
@@ -37,18 +37,37 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
     ANNOTATED_FILE_NAME = (
         f"{'_'.join(subject_slash_timepoint.split(os.sep))}_tumorMask_model_0.nii.gz"
     )
-    TUMOR_MASKS_DIR = os.path.join(
+
+    BASE_REVIEW_DIR = os.path.join(
+        "your/workspace/directory",  # TODO read this on initialization to print the proper path?
         AIRFLOW_DATA_DIR,
         "tumor_extracted",
         "DataForQC",
         subject_slash_timepoint,
-        "TumorMasksForQC",
     )
-    CONFIRMED_ANNOTATION_FILE = os.path.join(
-        TUMOR_MASKS_DIR,
-        "finalized",
-        ANNOTATED_FILE_NAME,
+
+    TUMOR_EXTRACTED_FILE = os.path.join("TumorMasksForQC", ANNOTATED_FILE_NAME)
+
+    BRAIN_MASK_FILE = os.path.join(
+        BASE_REVIEW_DIR,
+        "brainMask_fused.nii.gz",
     )
+
+    dag_doc = f"""
+    The first task on this DAG (named Manual Approval) must be manually set to success.
+    Please review the tumor segmentation located at {TUMOR_EXTRACTED_FILE} and, if necessary, make corrections.
+    After the segmentation has been reviewed and possibly corrected, set state of Task "Manual Approval" state to success to proceed with the pipeline.
+    The brain mask for this subject is located at {BRAIN_MASK_FILE}. If the brain mask itself must be corrected, please make the necessary corrections. 
+    The pipeline will automatically re-rerun from the Brain Extraction stage in case changes are detected to the brain_mask.
+    """
+
+    manual_approval_doc = f"""
+    This task must be manually set to success.
+    Please review the tumor segmentation located at {TUMOR_EXTRACTED_FILE} and, if necessary, make corrections.
+    After the segmentation has been reviewed and possibly corrected, set state of this task state to success to proceed with the pipeline.
+    The brain mask for this subject is located at {BRAIN_MASK_FILE}. If the brain mask itself must be corrected, please make the necessary corrections. 
+    The pipeline will automatically re-rerun from the Brain Extraction stage in case changes are detected to the brain_mask.
+    """
 
     with DAG(
         dag_id=dag_id,
@@ -57,22 +76,19 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
         schedule=[inlet_dataset],
         start_date=YESTERDAY,
         is_paused_upon_creation=False,
-        tags=[subject_slash_timepoint],
-        doc_md="Manual Stages, please do XYZ",
+        tags=[subject_slash_timepoint, "Manual Approval"],
+        doc_md=dag_doc,
     ) as dag:
 
-        segmentations_validated = FileSensor(
-            filepath=CONFIRMED_ANNOTATION_FILE,  # TODO can also send directory to return True for any files there. Maybe this is better?
-            task_id=rano_task_ids.SEGMENTATIONS_VALIDATED,
-            task_display_name="Has Tumor Segmentation been reviewed?",
-            # mode="reschedule",
-            doc_md="This task being marked as Failed means that the Tumor Segmentation has not been reviewed yet."
-            "Please run the RANO Monitoring tool to validate the existing segmentations or make manual corrections. "
-            "This task will be successful once the finalized file is in the proper directory.",
-            timeout=1,
-            fs_conn_id="local_fs",
-            poke_interval=20,
+        @task(
+            doc_md=manual_approval_doc,
+            task_display_name="Manual Approval",
+            task_id=rano_task_ids.MANUAL_APPROVAL,
         )
+        def manual_approval():
+            raise AirflowException(
+                f"This task is set to always fail. Read the Task Documentation or the DAG documentation for further information."
+            )
 
         check_brain_mask_changed_stage = RANOStage(
             "manual_annotation",
@@ -98,12 +114,11 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
                 "brain_mask_changed.json",
             )
 
-            if not os.path.exists(BRAIN_MASK_CHANGED_FILE):
-                brain_mask_changed = False
-
-            else:
+            try:
                 with open(BRAIN_MASK_CHANGED_FILE, "r") as f:
                     brain_mask_changed = json.load(f)
+            except OSError:
+                brain_mask_changed = False
 
             if brain_mask_changed:
                 next_task_id = rano_task_ids.RETURN_TO_BRAIN_EXTRACT
@@ -125,39 +140,6 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
             task_display_name="Return to Segmentations Validate",
             outlets=[inlet_dataset],  # Repeat this DAG until approved
         )
-        # @task(
-        #     task_id=rano_task_ids.RETURN_TO_BRAIN_EXTRACT,
-        #     task_display_name="Return to Brain Extraction",
-        # )
-        # def return_to_brain_extract(
-        #     dag_run: DagRun = None,
-        #     dag: DAG = None,
-        #     task_instance: TaskInstance = None,
-        # ):
-        #     _clear_task_from_same_subject(
-        #         base_task=task_instance,
-        #         other_task_short_name=rano_task_ids.EXTRACT_BRAIN,
-        #         dag_run=dag_run,
-        #         dag=dag,
-        #         include_downstream=True,
-        #     )
-
-        # @task(
-        # task_id=rano_task_ids.RETURN_TO_SEGMENTATIONS_VALIDATED,
-        # task_display_name="Return to Segmentatins Validate",
-        # )
-        # def return_to_file_sensor(
-        #     dag_run: DagRun = None,
-        #     dag: DAG = None,
-        #     task_instance: TaskInstance = None,
-        # ):
-        #     _clear_task_from_same_subject(
-        #         base_task=task_instance,
-        #         other_task_short_name=rano_task_ids.SEGMENTATIONS_VALIDATED,
-        #         dag_run=dag_run,
-        #         dag=dag,
-        #         include_downstream=True,
-        #     )
 
         segment_comparison_stage = RANOStage(
             "segmentation_comparison",
@@ -171,11 +153,12 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
             segment_comparison_stage
         )
 
-        segmentations_validated >> Label("Reviewed") >> segment_comparison
-
+        manual_approval_instance = manual_approval()
         brain_mask_changed_instance = brain_mask_changed()
+        manual_approval_instance >> Label("Reviewed") >> segment_comparison
+
         (
-            segmentations_validated
+            manual_approval_instance
             >> Label("NOT reviewed")
             >> check_brain_mask_changed
             >> brain_mask_changed_instance
