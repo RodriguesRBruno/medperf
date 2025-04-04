@@ -1,6 +1,5 @@
 from typing import Union, Tuple
 import os
-import shutil
 
 import pandas as pd
 from pandas import DataFrame
@@ -10,7 +9,7 @@ import nibabel as nib
 from .row_stage import RowStage
 from .utils import get_id_tp, update_row_with_dict, md5_file, load_report
 from .constants import TUMOR_MASK_FOLDER, INTERIM_FOLDER
-from .mlcube_constants import COMPARISON_STAGE_STATUS
+from .mlcube_constants import COMPARISON_STAGE_STATUS, GROUND_TRUTH_PATH
 
 
 class SegmentationComparisonStage(RowStage):
@@ -37,7 +36,7 @@ class SegmentationComparisonStage(RowStage):
     def __get_input_path(self, index: Union[str, int]) -> str:
         id, tp = get_id_tp(index)
         path = os.path.join(
-            self.prev_stage_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER, "finalized"
+            self.prev_stage_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER
         )
         return path
 
@@ -152,7 +151,7 @@ class SegmentationComparisonStage(RowStage):
         gt_file = os.path.join(self.__get_backup_path(index), cases[0])
         print(f"{gt_file=}")
         if not os.path.exists(gt_file):
-            # Ground truth file not found, reviewed file most probably renamed
+            print("Ground truth file not found, reviewed file most probably renamed")
             report = self.__report_gt_not_found(index, report, reviewed_hash)
             return report, False
 
@@ -163,7 +162,7 @@ class SegmentationComparisonStage(RowStage):
         gt_voxels = np.array(gt_img.dataobj)
 
         num_changed_voxels = np.sum(reviewed_voxels != gt_voxels)
-
+        print(f"{num_changed_voxels=}")
         if num_changed_voxels == 0:
             report = self.__report_exact_match(index, report, reviewed_hash)
             return report, True

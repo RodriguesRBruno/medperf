@@ -10,6 +10,7 @@ from .dset_stage import DatasetStage
 from .utils import get_id_tp, load_report, find_finalized_subjects
 from .constants import TUMOR_MASK_FOLDER, INTERIM_FOLDER, FINAL_FOLDER
 from .mlcube_constants import CONFIRM_STAGE_STATUS
+from .env_vars import DATA_DIR
 
 
 class ConfirmStage(DatasetStage):
@@ -72,7 +73,7 @@ class ConfirmStage(DatasetStage):
         response_path = os.path.join(self.out_data_path, self.response_file)
 
         with open(prompt_path, "w") as f:
-            f.write(msg)
+            f.write(str(msg))
 
         while not os.path.exists(response_path):
             sleep(1)
@@ -148,6 +149,13 @@ class ConfirmStage(DatasetStage):
         report = report[report.index.isin(valid_subjects)]
 
         exact_match_percent = (report["num_changed_voxels"] == 0).sum() / len(report)
+
+        rounded_percent = round(exact_match_percent * 100, 2)
+        msg_file = os.path.join(DATA_DIR, ".msg")
+        print(f"{str(rounded_percent)=}")
+        with open(msg_file, "w") as f:
+            f.write(str(rounded_percent))
+        return
 
         confirmed = self.__confirm(exact_match_percent)
 

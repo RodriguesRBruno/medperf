@@ -184,7 +184,7 @@ def segmentation_comparison(
     csv_path = get_data_csv_filepath(subject_subdir)
     prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH)
     labels_out = os.path.join(WORKSPACE_DIR, "labels")
-    backup_out = os.path.join(labels_out, TUMOR_BACKUP_PATH)  # TODO validate this path
+    backup_out = os.path.join(labels_out, TUMOR_BACKUP_PATH)
 
     segment_compare = SegmentationComparisonStage(
         data_csv=csv_path,
@@ -196,13 +196,13 @@ def segmentation_comparison(
     segment_compare.execute(subject_index)
 
 
-@app.command("confirmation_stage")
-def confirmation_stage():
+@app.command("calculate_changed_voxels")
+def calculate_changed_voxels():
     from stages.confirm import ConfirmStage
 
     prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH)
     labels_out = os.path.join(WORKSPACE_DIR, "labels")
-    backup_out = os.path.join(labels_out, TUMOR_BACKUP_PATH)  # TODO validate this path
+    backup_out = os.path.join(labels_out, TUMOR_BACKUP_PATH)
 
     confirm_stage = ConfirmStage(
         out_data_path=DATA_DIR,

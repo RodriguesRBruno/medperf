@@ -1,10 +1,35 @@
 from __future__ import annotations
 from airflow.models.dag import DAG
+from airflow.decorators import task
+from airflow.exceptions import AirflowException
 from container_factory import ContainerOperatorFactory
 from rano_stage import RANOStage
 from datetime import timedelta
 import rano_task_ids
 from subject_datasets import YESTERDAY, ALL_DONE_DATASETS
+import os
+
+DATA_DIR = os.getenv("AIRFLOW_DATA_DIR")
+msg_file = os.path.join(DATA_DIR, ".msg")
+
+try:
+    with open(msg_file, "r") as f:
+        percent_change = f.read()
+
+except OSError:
+    percent_change = None
+
+if percent_change:
+    dag_msg = f"""We have identified {percent_change}% of cases have not been modified 
+              with respect to the baseline segmentation. If this is correct, please mark
+              the task **Manual Confirmation** as **SUCCESS** to proceed with the pipeline."""
+    task_msg = f"""We have identified {percent_change}% of cases have not been modified 
+               with respect to the baseline segmentation. If this is correct, please mark
+               the this task as **SUCCESS** to proceed with the pipeline."""
+else:
+    dag_msg = """Please wait until the conclusion of the **Calculate Changed Voxels** task before interacting with this DAG."""
+    task_msg = """Please wait until the conclusion of the **Calculate Changed Voxels** task before interacting with this task."""
+
 
 with DAG(
     dag_id="rano_end",
@@ -14,17 +39,25 @@ with DAG(
     schedule=ALL_DONE_DATASETS,
     start_date=YESTERDAY,
     is_paused_upon_creation=False,
-    doc_md="Final Stages",
+    doc_md=dag_msg,
     tags=["All Subjects", "Finish"],
 ) as dag:
 
-    confirmation = ContainerOperatorFactory.get_operator(
+    calculate_changed_voxels = ContainerOperatorFactory.get_operator(
         RANOStage(
-            command="confirmation_stage",
-            task_display_name="Confirmation Stage",
-            task_id=rano_task_ids.CONFIRMATION_STAGE,
+            command="calculate_changed_voxels",
+            task_display_name="Calculate Changed Voxels",
+            task_id=rano_task_ids.CALCULATE_CHANGED_VOXELS,
         )
     )
+
+    @task(
+        task_id=rano_task_ids.CONFIRMATION_STAGE,
+        task_display_name="Manual Confirmation",
+        doc_md=task_msg,
+    )
+    def manual_confirmation():
+        raise AirflowException("This task must be approved manually!")
 
     consolidation = ContainerOperatorFactory.get_operator(
         RANOStage(
@@ -38,4 +71,4 @@ with DAG(
         )
     )
 
-    confirmation >> consolidation
+    calculate_changed_voxels >> manual_confirmation() >> consolidation

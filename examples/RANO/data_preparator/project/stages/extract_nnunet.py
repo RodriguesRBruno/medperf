@@ -1,14 +1,10 @@
-from typing import Union, List, Tuple
+from typing import Union
 from tqdm import tqdm
-import pandas as pd
 import os
-from os.path import realpath, dirname, join
 import shutil
 import time
 import SimpleITK as sitk
 import subprocess
-import traceback
-from LabelFusion.wrapper import fuse_images
 
 from .extract import Extract
 from .PrepareDataset import (
@@ -17,7 +13,8 @@ from .PrepareDataset import (
     generate_tumor_segmentation_fused_images,
     save_screenshot,
 )
-from .utils import update_row_with_dict, get_id_tp, MockTqdm
+from .utils import get_id_tp
+from .mlcube_constants import GROUND_TRUTH_PATH
 
 MODALITY_MAPPING = {
     "t1c": "t1c",
@@ -157,10 +154,9 @@ class ExtractNnUNet(Extract):
         images_for_fusion = []
         out_path = os.path.join(self.out_path, "DataForQC", id, tp)
         out_pred_path = os.path.join(out_path, "TumorMasksForQC")
-        finalized_path = os.path.join(out_pred_path, "finalized")
-        under_review_path = os.path.join(out_pred_path, "under_review")
+        ground_truth_path = os.path.join(out_path, GROUND_TRUTH_PATH)
 
-        for path_to_create in [out_pred_path, finalized_path, under_review_path]:
+        for path_to_create in [out_pred_path, ground_truth_path]:
             os.makedirs(path_to_create, exist_ok=True)
 
         for i, model in enumerate(models):

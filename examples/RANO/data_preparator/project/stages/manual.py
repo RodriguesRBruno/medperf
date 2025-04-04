@@ -7,8 +7,6 @@ from .row_stage import RowStage
 from .constants import TUMOR_MASK_FOLDER, INTERIM_FOLDER, FINAL_FOLDER
 from .mlcube_constants import (
     MANUAL_STAGE_STATUS,
-    UNDER_REVIEW_PATH,
-    FINALIZED_PATH,
     BRAIN_MASK_CHANGED_FILE,
     PREP_PATH,
 )
@@ -56,13 +54,6 @@ class ManualStage(RowStage):
         )
         return tumor_mask_path, brain_mask_path
 
-    def __get_under_review_path(self, index: Union[str, int]):
-        id, tp = get_id_tp(index)
-        path = os.path.join(
-            self.out_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER, UNDER_REVIEW_PATH
-        )
-        return path
-
     def __get_brain_mask_changed_filepath(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
         path = os.path.join(
@@ -73,9 +64,7 @@ class ManualStage(RowStage):
 
     def __get_output_path(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
-        path = os.path.join(
-            self.out_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER, FINALIZED_PATH
-        )
+        path = os.path.join(self.out_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER)
         return path
 
     def __get_backup_path(self, index: Union[str, int]):
@@ -209,13 +198,10 @@ class ManualStage(RowStage):
         # Generate a hidden copy of the baseline segmentations
         in_path, brain_path = self.__get_input_paths(index)
         out_path = self.__get_output_path(index)
-        under_review_path = self.__get_under_review_path(index)
         bak_path = self.__get_backup_path(index)
         if not os.path.exists(bak_path):
             copy_files(in_path, bak_path)
             set_files_read_only(bak_path)
-        # os.makedirs(under_review_path, exist_ok=True)
-        # os.makedirs(out_path, exist_ok=True)
 
         return out_path, brain_path
 

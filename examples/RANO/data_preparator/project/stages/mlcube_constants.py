@@ -10,9 +10,8 @@ TRASH_PATH = ".trash"
 INVALID_FILE = ".invalid.txt"
 REPORT_FILE = "report.yaml"
 
-# Subdirectories for manual validation
-UNDER_REVIEW_PATH = "under_review"
-FINALIZED_PATH = "finalized"
+# Backup segmentation in case the user changes the one being used
+GROUND_TRUTH_PATH = ".ground_truth"
 
 # JSON file (just true/false) for evaluating brain mask changes
 BRAIN_MASK_CHANGED_FILE = "brain_mask_changed.json"

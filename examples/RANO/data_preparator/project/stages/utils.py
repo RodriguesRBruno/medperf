@@ -10,7 +10,7 @@ import pandas as pd
 from filelock import SoftFileLock
 
 from .env_vars import DATA_DIR, REPORT_PATH, REPORT_LOCK, DATA_SUBDIR
-from .mlcube_constants import OUT_CSV, AUX_FILES_PATH, TUMOR_PATH, FINALIZED_PATH
+from .mlcube_constants import OUT_CSV, AUX_FILES_PATH, TUMOR_PATH
 from .constants import INTERIM_FOLDER, TUMOR_MASK_FOLDER
 
 
@@ -273,9 +273,7 @@ def find_finalized_subjects():
 
         for timepoint in timepoint_dirs:
             timepoint_complete_path = os.path.join(subject_path, timepoint)
-            finalized_path = os.path.join(
-                timepoint_complete_path, TUMOR_MASK_FOLDER, FINALIZED_PATH
-            )
+            finalized_path = os.path.join(timepoint_complete_path, TUMOR_MASK_FOLDER)
             try:
                 path_exists = os.path.exists(finalized_path)
                 path_is_dir = os.path.isdir(finalized_path)
@@ -286,6 +284,6 @@ def find_finalized_subjects():
                         "Timepoint": timepoint,
                     }
                     subject_and_timepoint_list.append(subject_timepoint_dict)
-            except (FileNotFoundError, OSError):
+            except OSError:
                 pass
     return subject_and_timepoint_list
