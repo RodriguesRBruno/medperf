@@ -15,7 +15,7 @@ with DAG(
     start_date=YESTERDAY,
     is_paused_upon_creation=False,
     doc_md="Final Stages",
-    tags=["All Subjects - Finish"],
+    tags=["All Subjects", "Finish"],
 ) as dag:
 
     confirmation = ContainerOperatorFactory.get_operator(

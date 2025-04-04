@@ -28,7 +28,7 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
         schedule=[inlet_dataset],
         start_date=YESTERDAY,
         is_paused_upon_creation=False,
-        tags=[subject_slash_timepoint],
+        tags=[subject_slash_timepoint, "Tumor Extraction"],
         doc_md="Brain and Tumor Extraction stages",
     ) as dag:
 

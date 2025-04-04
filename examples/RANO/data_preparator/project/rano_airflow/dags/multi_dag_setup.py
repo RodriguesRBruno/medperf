@@ -15,7 +15,7 @@ with DAG(
     start_date=YESTERDAY,
     is_paused_upon_creation=False,
     doc_md="Initial setup creating necessary directories",
-    tags=["All Subjects - Setup"],
+    tags=["All Subjects", "Setup"],
 ) as dag:
 
     report = ContainerOperatorFactory.get_operator(
