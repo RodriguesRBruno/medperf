@@ -50,6 +50,13 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
                 retry_delay=timedelta(minutes=15),
                 retry_exponential_backoff=True,
                 max_retry_delay=timedelta(hours=1),
+            ),
+            RANOStage(
+                "prepare_for_manual_review",
+                "--subject-subdir",
+                subject_slash_timepoint,
+                task_display_name="Prepare for Manual Review",
+                task_id=rano_task_ids.PREPARE_FOR_MANUAL_REVIEW,
                 outlets=[outlet_dataset],
             ),
         ]

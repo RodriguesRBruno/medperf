@@ -156,8 +156,8 @@ def extract_tumor(
     print(output_path)
 
 
-@app.command("manual_annotation")
-def manual_annotation(
+@app.command("prepare_for_manual_review")
+def prepare_for_manual_review(
     subject_subdir: str = typer.Option(..., "--subject-subdir"),
 ):
 
@@ -174,7 +174,28 @@ def manual_annotation(
         backup_path=backup_out,
     )
     subject_index = convert_path_to_index(subject_subdir)
-    manual_validation.execute(subject_index)
+    manual_validation.prepare_directories(subject_index)
+
+
+@app.command("rollback_to_brain_extract")
+def rollback(
+    subject_subdir: str = typer.Option(..., "--subject-subdir"),
+):
+
+    from stages.manual import ManualStage
+
+    csv_path = get_data_csv_filepath(subject_subdir)
+    prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH, subject_subdir)
+    backup_out = os.path.join(WORKSPACE_DIR, LABELS_PATH, TUMOR_BACKUP_PATH)
+
+    manual_validation = ManualStage(
+        data_csv=csv_path,
+        out_path=prev_stage_path,
+        prev_stage_path=prev_stage_path,
+        backup_path=backup_out,
+    )
+    subject_index = convert_path_to_index(subject_subdir)
+    manual_validation.rollback(subject_index)
 
 
 @app.command("segmentation_comparison")

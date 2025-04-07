@@ -4,12 +4,16 @@ import os
 import shutil
 import json
 from .row_stage import RowStage
-from .constants import TUMOR_MASK_FOLDER, INTERIM_FOLDER, FINAL_FOLDER
+from .constants import INTERIM_FOLDER, FINAL_FOLDER
+from .env_vars import DATA_DIR
 from .mlcube_constants import (
     MANUAL_STAGE_STATUS,
     BRAIN_MASK_CHANGED_FILE,
     PREP_PATH,
-    FINALIZED_PATH,
+    BRAIN_MASK_REVIEW_PATH,
+    TUMOR_EXTRACTION_REVIEW_PATH,
+    BRAIN_MASK_FILE,
+    GROUND_TRUTH_PATH,
 )
 from .utils import (
     get_id_tp,
@@ -19,6 +23,7 @@ from .utils import (
     md5_file,
     load_report,
     get_aux_files_dir,
+    get_manual_approval_finalized_path,
 )
 
 
@@ -34,8 +39,6 @@ class ManualStage(RowStage):
         self.out_path = out_path
         self.prev_stage_path = prev_stage_path
         self.backup_path = backup_path
-        self.rollback_path = os.path.join(os.path.dirname(out_path), PREP_PATH)
-        self.brain_mask_file = "brainMask_fused.nii.gz"
 
     @property
     def name(self):
@@ -47,16 +50,14 @@ class ManualStage(RowStage):
 
     def __get_input_paths(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
+        print(f"{self.prev_stage_path=}")
         tumor_mask_path = os.path.join(
-            self.prev_stage_path,
-            INTERIM_FOLDER,
-            id,
-            tp,
-            TUMOR_MASK_FOLDER,
+            self.prev_stage_path, INTERIM_FOLDER, id, tp, GROUND_TRUTH_PATH
         )
-        brain_mask_path = os.path.join(
-            self.prev_stage_path, INTERIM_FOLDER, id, tp, self.brain_mask_file
+        brain_mask_dir = get_manual_approval_finalized_path(
+            id, tp, BRAIN_MASK_REVIEW_PATH
         )
+        brain_mask_path = os.path.join(brain_mask_dir, BRAIN_MASK_FILE)
         return tumor_mask_path, brain_mask_path
 
     def __get_brain_mask_changed_filepath(self, index: Union[str, int]):
@@ -69,20 +70,19 @@ class ManualStage(RowStage):
 
     def __get_output_path(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
-        path = os.path.join(
-            self.out_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER, FINALIZED_PATH
-        )
+        path = get_manual_approval_finalized_path(id, tp, TUMOR_EXTRACTION_REVIEW_PATH)
         return path
 
     def __get_backup_path(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
-        path = os.path.join(self.backup_path, id, tp, TUMOR_MASK_FOLDER)
+        path = os.path.join(self.backup_path, id, tp, GROUND_TRUTH_PATH)
         return path
 
     def __get_rollback_paths(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
-        data_path = os.path.join(self.rollback_path, FINAL_FOLDER, id, tp)
-        labels_path = os.path.join(self.rollback_path, INTERIM_FOLDER, id, tp)
+        base_rollback_path = os.path.join(DATA_DIR, PREP_PATH, id, tp)
+        data_path = os.path.join(base_rollback_path, FINAL_FOLDER, id, tp)
+        labels_path = os.path.join(base_rollback_path, INTERIM_FOLDER, id, tp)
         return data_path, labels_path
 
     def __report_success(
@@ -136,7 +136,7 @@ class ManualStage(RowStage):
         update_row_with_dict(report, report_data, index)
         return report
 
-    def __rollback(self, index):
+    def rollback(self, index):
         # Unhide the rollback paths
         rollback_paths = self.__get_rollback_paths(index)
         for rollback_path in rollback_paths:
@@ -152,9 +152,7 @@ class ManualStage(RowStage):
         # Move the modified brain mask to the rollback path
         _, rollback_labels_path = rollback_paths
         tumor_masks_path, brain_mask_path = self.__get_input_paths(index)
-        rollback_brain_mask_path = os.path.join(
-            rollback_labels_path, self.brain_mask_file
-        )
+        rollback_brain_mask_path = os.path.join(rollback_labels_path, BRAIN_MASK_FILE)
         if os.path.exists(rollback_brain_mask_path):
             os.remove(rollback_brain_mask_path)
         shutil.move(brain_mask_path, rollback_brain_mask_path)
@@ -272,7 +270,7 @@ class ManualStage(RowStage):
 
         if brain_mask_changed:
             # Found brain mask changed
-            self.__rollback(index)
+            self.rollback(index)
             # Label this as able to continue
             return self.__report_rollback(index, report, brain_mask_hash), True
 

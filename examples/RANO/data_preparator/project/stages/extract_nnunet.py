@@ -190,7 +190,6 @@ class ExtractNnUNet(Extract):
             under_review_tumor_path,
             finalized_brain_mask_path,
             under_review_brain_mask_path,
-            brain_mask_review_filepath,
         ]:
             os.makedirs(path_to_create, exist_ok=True)
 

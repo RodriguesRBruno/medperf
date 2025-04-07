@@ -109,22 +109,19 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
             "rollback_to_brain_extract",
             "--subject-subdir",
             subject_slash_timepoint,
-            task_id=rano_task_ids.CHECK_BRAIN_MASK,
-            task_display_name="Check Brain Mask",
+            task_id=rano_task_ids.RETURN_TO_BRAIN_EXTRACT,
+            task_display_name="Rollback to Brain Extraction",
+            outlets=[nifti_dataset],
         )
 
-        return_to_brain_extract = EmptyOperator(
-            task_id=rano_task_ids.RETURN_TO_BRAIN_EXTRACT,
-            task_display_name="Return to Brain Extraction",
-            outlets=[
-                nifti_dataset
-            ],  # Go to Brain Extract (stage right after NIfTI) is brain mask changed
-        )
+        return_to_brain_extract = ContainerOperatorFactory.get_operator(rollback_stage)
 
         return_to_manual_approval = EmptyOperator(
             task_id=rano_task_ids.RETURN_TO_TUMOR_EXTRACTION_REVIEW,
-            task_display_name="Return to Segmentations Validate",
-            outlets=[inlet_dataset],  # Repeat this DAG until approved,
+            task_display_name="Return to Tumor Segmentation Review",
+            outlets=[
+                inlet_dataset
+            ],  # Repeat this DAG until approved or brain mask changes,
             trigger_rule=TriggerRule.ALL_FAILED,
         )
         tumor_extraction_reviewed >> Label("Reviewed") >> segment_comparison
