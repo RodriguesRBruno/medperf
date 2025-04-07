@@ -16,6 +16,8 @@ from stages.mlcube_constants import (
     TUMOR_STAGE_STATUS,
     TUMOR_BACKUP_PATH,
     MANUAL_STAGE_STATUS,
+    MANUAL_REVIEW_PATH,
+    LABELS_PATH,
 )
 from stages.constants import INTERIM_FOLDER
 from stages.utils import write_report
@@ -28,7 +30,7 @@ def create_report():
     from stages.generate_report import GenerateReport
 
     raw_dir = os.path.join(DATA_DIR, RAW_PATH)
-    labels_out_dir = os.path.join(WORKSPACE_DIR, "labels")
+    labels_out_dir = os.path.join(WORKSPACE_DIR, LABELS_PATH)
     brain_out = os.path.join(DATA_DIR, BRAIN_PATH)
     tumor_out = os.path.join(DATA_DIR, TUMOR_PATH)
     report_generator = GenerateReport(
@@ -78,7 +80,7 @@ def convert_nifti(
     from stages.nifti_transform import NIfTITransform
 
     csv_path = get_data_csv_filepath(subject_subdir)
-    output_path = os.path.join(DATA_DIR, PREP_PATH)
+    output_path = os.path.join(DATA_DIR, PREP_PATH, subject_subdir)
     metadata_path = os.path.join(WORKSPACE_DIR, "metadata")
     os.makedirs(output_path, exist_ok=True)
     os.makedirs(metadata_path, exist_ok=True)
@@ -102,8 +104,8 @@ def extract_brain(
     from stages.extract import Extract
 
     csv_path = get_data_csv_filepath(subject_subdir)
-    output_path = os.path.join(DATA_DIR, BRAIN_PATH)
-    prev_path = os.path.join(DATA_DIR, PREP_PATH)
+    output_path = os.path.join(DATA_DIR, BRAIN_PATH, subject_subdir)
+    prev_path = os.path.join(DATA_DIR, PREP_PATH, subject_subdir)
     os.makedirs(output_path, exist_ok=True)
 
     brain_extract = Extract(
@@ -127,8 +129,8 @@ def extract_tumor(
     from stages.extract_nnunet import ExtractNnUNet
 
     csv_path = get_data_csv_filepath(subject_subdir)
-    output_path = os.path.join(DATA_DIR, TUMOR_PATH)
-    prev_path = os.path.join(DATA_DIR, BRAIN_PATH)
+    output_path = os.path.join(DATA_DIR, TUMOR_PATH, subject_subdir)
+    prev_path = os.path.join(DATA_DIR, BRAIN_PATH, subject_subdir)
     os.makedirs(output_path, exist_ok=True)
 
     models_path = os.path.join(WORKSPACE_DIR, "additional_files", "models")
@@ -162,8 +164,8 @@ def manual_annotation(
     from stages.manual import ManualStage
 
     csv_path = get_data_csv_filepath(subject_subdir)
-    prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH)
-    backup_out = os.path.join(WORKSPACE_DIR, "labels", TUMOR_BACKUP_PATH)
+    prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH, subject_subdir)
+    backup_out = os.path.join(WORKSPACE_DIR, LABELS_PATH, TUMOR_BACKUP_PATH)
 
     manual_validation = ManualStage(
         data_csv=csv_path,
@@ -182,8 +184,8 @@ def segmentation_comparison(
     from stages.comparison import SegmentationComparisonStage
 
     csv_path = get_data_csv_filepath(subject_subdir)
-    prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH)
-    labels_out = os.path.join(WORKSPACE_DIR, "labels")
+    prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH, subject_subdir)
+    labels_out = os.path.join(WORKSPACE_DIR, LABELS_PATH)
     backup_out = os.path.join(labels_out, TUMOR_BACKUP_PATH)
 
     segment_compare = SegmentationComparisonStage(
@@ -201,7 +203,7 @@ def calculate_changed_voxels():
     from stages.confirm import ConfirmStage
 
     prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH)
-    labels_out = os.path.join(WORKSPACE_DIR, "labels")
+    labels_out = os.path.join(WORKSPACE_DIR, LABELS_PATH)
     backup_out = os.path.join(labels_out, TUMOR_BACKUP_PATH)
 
     confirm_stage = ConfirmStage(
@@ -213,11 +215,28 @@ def calculate_changed_voxels():
     confirm_stage.execute()
 
 
+@app.command("move_labeled_files")
+def move_labeled_files():
+    from stages.confirm import ConfirmStage
+
+    prev_stage_path = os.path.join(DATA_DIR, TUMOR_PATH)
+    labels_out = os.path.join(WORKSPACE_DIR, LABELS_PATH)
+    backup_out = os.path.join(labels_out, TUMOR_BACKUP_PATH)
+
+    confirm_stage = ConfirmStage(
+        out_data_path=DATA_DIR,
+        out_labels_path=labels_out,
+        prev_stage_path=prev_stage_path,
+        backup_path=backup_out,
+    )
+    confirm_stage.move_labels()
+
+
 @app.command("consolidation_stage")
 def consolidation_stage(keep_files: bool = typer.Option(False, "--keep-files")):
     from stages.split import SplitStage
 
-    labels_out = os.path.join(WORKSPACE_DIR, "labels")
+    labels_out = os.path.join(WORKSPACE_DIR, LABELS_PATH)
     params_path = os.path.join(WORKSPACE_DIR, "parameters.yaml")
     base_finalized_dir = os.path.join(DATA_DIR, TUMOR_PATH, INTERIM_FOLDER)
 
@@ -232,6 +251,7 @@ def consolidation_stage(keep_files: bool = typer.Option(False, "--keep-files")):
             RAW_PATH,
             TUMOR_PATH,
             VALID_PATH,
+            MANUAL_REVIEW_PATH,
         ]
         dirs_to_remove = [
             os.path.join(DATA_DIR, subdir) for subdir in subdirs_to_remove

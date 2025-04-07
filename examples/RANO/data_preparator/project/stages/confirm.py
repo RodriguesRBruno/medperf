@@ -18,6 +18,7 @@ from .constants import FINAL_FOLDER
 from .mlcube_constants import (
     CONFIRM_STAGE_STATUS,
     TUMOR_EXTRACTION_REVIEW_PATH,
+    AUX_FILES_PATH,
 )
 from .env_vars import DATA_DIR
 
@@ -47,7 +48,7 @@ class ConfirmStage(DatasetStage):
 
     def __get_input_data_path(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
-        path = os.path.join(self.prev_stage_path, FINAL_FOLDER, id, tp)
+        path = os.path.join(self.prev_stage_path, id, tp, FINAL_FOLDER, id, tp)
         return path
 
     def __get_input_label_path(self, index: Union[str, int]):
@@ -159,7 +160,7 @@ class ConfirmStage(DatasetStage):
         exact_match_percent = (report["num_changed_voxels"] == 0).sum() / len(report)
 
         rounded_percent = round(exact_match_percent * 100, 2)
-        msg_file = os.path.join(DATA_DIR, ".msg")
+        msg_file = os.path.join(DATA_DIR, AUX_FILES_PATH, ".msg")
         print(f"{str(rounded_percent)=}")
         with open(msg_file, "w") as f:
             f.write(str(rounded_percent))

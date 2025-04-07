@@ -5,8 +5,8 @@ import os
 import shutil
 
 from .row_stage import RowStage
-from .PrepareDataset import Preparator, INTERIM_FOLDER, FINAL_FOLDER
-from .utils import update_row_with_dict, get_id_tp, MockTqdm, unnormalize_path
+from .PrepareDataset import Preparator
+from .utils import update_row_with_dict, get_id_tp, unnormalize_path
 from .mlcube_constants import NIFTI_STAGE_STATUS
 
 
@@ -73,7 +73,7 @@ class NIfTITransform(RowStage):
         self.__cleanup_artifacts(index)
         report, success = self.__update_report(index, report)
         self.prep.write()
-        self.__update_metadata()
+        self.__update_metadata(index)
 
         return report, success
 
@@ -138,11 +138,14 @@ class NIfTITransform(RowStage):
 
         return report, success
 
-    def __update_metadata(self):
+    def __update_metadata(self, index):
+        id, tp = get_id_tp(index)
         fets_path = os.path.join(self.out_path, "DataForFeTS")
+        outfile_dir = os.path.join(self.metadata_path, id, tp)
+        os.makedirs(outfile_dir, exist_ok=True)
         for file in os.listdir(fets_path):
             filepath = os.path.join(fets_path, file)
-            out_filepath = os.path.join(self.metadata_path, file)
+            out_filepath = os.path.join(self.metadata_path, id, tp, file)
             if os.path.isfile(filepath) and filepath.endswith(".yaml"):
                 shutil.copyfile(filepath, out_filepath)
 

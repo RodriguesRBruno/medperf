@@ -53,7 +53,7 @@ class SegmentationComparisonStage(RowStage):
     def __get_backup_path(self, index: Union[str, int]) -> str:
         id, tp = get_id_tp(index)
         path = os.path.join(
-            DATA_DIR, TUMOR_PATH, INTERIM_FOLDER, id, tp, GROUND_TRUTH_PATH
+            DATA_DIR, TUMOR_PATH, id, tp, INTERIM_FOLDER, id, tp, GROUND_TRUTH_PATH
         )
         return path
 

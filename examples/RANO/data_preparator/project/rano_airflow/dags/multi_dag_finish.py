@@ -9,7 +9,7 @@ from subject_datasets import YESTERDAY, ALL_DONE_DATASETS
 import os
 
 DATA_DIR = os.getenv("AIRFLOW_DATA_DIR")
-msg_file = os.path.join(DATA_DIR, ".msg")
+msg_file = os.path.join(DATA_DIR, "auxiliary_files", ".msg")
 
 try:
     with open(msg_file, "r") as f:
