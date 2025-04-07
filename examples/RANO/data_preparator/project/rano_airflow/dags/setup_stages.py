@@ -1,13 +1,13 @@
 from __future__ import annotations
 from airflow.models.dag import DAG
-from container_factory import ContainerOperatorFactory
-from rano_stage import RANOStage
-import rano_task_ids
-from subject_datasets import YESTERDAY, REPORT_DATASET
+from utils.container_factory import ContainerOperatorFactory
+from utils.rano_stage import RANOStage
+from utils import rano_task_ids, dag_ids, dag_tags
+from utils.subject_datasets import YESTERDAY, REPORT_DATASET
 
 
 with DAG(
-    dag_id="rano_setup",
+    dag_id=dag_ids.SETUP,
     dag_display_name="Initial Setup",
     catchup=True,
     max_active_runs=1,
@@ -15,7 +15,7 @@ with DAG(
     start_date=YESTERDAY,
     is_paused_upon_creation=False,
     doc_md="Initial setup creating necessary directories",
-    tags=["All Subjects", "Setup"],
+    tags=[dag_tags.ALL_SUBJECTS, dag_tags.SETUP],
 ) as dag:
 
     report = ContainerOperatorFactory.get_operator(

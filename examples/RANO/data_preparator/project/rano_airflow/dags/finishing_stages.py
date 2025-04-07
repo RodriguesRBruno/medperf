@@ -2,10 +2,10 @@ from __future__ import annotations
 from airflow.models.dag import DAG
 from airflow.decorators import task
 from airflow.exceptions import AirflowException
-from container_factory import ContainerOperatorFactory
-from rano_stage import RANOStage
-import rano_task_ids
-from subject_datasets import YESTERDAY, ALL_DONE_DATASETS
+from utils.container_factory import ContainerOperatorFactory
+from utils.rano_stage import RANOStage
+from utils.subject_datasets import YESTERDAY, ALL_DONE_DATASETS
+from utils import rano_task_ids, dag_ids, dag_tags
 import os
 
 DATA_DIR = os.getenv("AIRFLOW_DATA_DIR")
@@ -31,7 +31,7 @@ else:
 
 
 with DAG(
-    dag_id="rano_end",
+    dag_id=dag_ids.FINISH,
     dag_display_name="Validation and Finish",
     catchup=True,
     max_active_runs=1,
@@ -39,7 +39,7 @@ with DAG(
     start_date=YESTERDAY,
     is_paused_upon_creation=False,
     doc_md=dag_msg,
-    tags=["All Subjects", "Finish"],
+    tags=[dag_tags.ALL_SUBJECTS, dag_tags.FINISH],
 ) as dag:
 
     calculate_changed_voxels = ContainerOperatorFactory.get_operator(

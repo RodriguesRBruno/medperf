@@ -1,5 +1,4 @@
 import os
-from collections import defaultdict
 from typing import Literal
 
 
@@ -17,16 +16,17 @@ def create_legal_id(subject_slash_timepoint, restrictive=False):
 def read_subject_directories():
     INPUT_DATA_DIR = os.getenv("AIRFLOW_INPUT_DATA_DIR")
 
-    subject_id_to_timepoints = defaultdict(lambda: [])
+    subject_slash_timepoint_list = []
 
     for subject_id_dir in os.listdir(INPUT_DATA_DIR):
         subject_complete_dir = os.path.join(INPUT_DATA_DIR, subject_id_dir)
 
         for timepoint_dir in os.listdir(subject_complete_dir):
-            subject_id_timepoint_dir = os.path.join(subject_id_dir, timepoint_dir)
-            subject_id_to_timepoints[subject_id_dir].append(timepoint_dir)
+            subject_slash_timepoint_list.append(
+                os.path.join(subject_id_dir, timepoint_dir)
+            )
 
-    return subject_id_to_timepoints
+    return subject_slash_timepoint_list
 
 
 def get_manual_review_directory(

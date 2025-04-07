@@ -1,15 +1,14 @@
 from __future__ import annotations
 from airflow.models.dag import DAG
 
-from container_factory import ContainerOperatorFactory
-from rano_stage import RANOStage
-from utils import (
-    create_legal_id,
+from utils.container_factory import ContainerOperatorFactory
+from utils.rano_stage import RANOStage
+from utils.utils import (
     create_documentation_for_manual_steps,
     get_manual_review_directory,
 )
-import rano_task_ids
-from subject_datasets import (
+from utils import rano_task_ids, dag_ids, dag_tags
+from utils.subject_datasets import (
     YESTERDAY,
     SUBJECT_NIFTI_DATASETS,
     SUBJECT_TIMEPOINT_LIST,
@@ -32,7 +31,7 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
     ]  # Used to rollback to brain extraction
     outlet_dataset = SUBJECT_DONE_DATASETS[subject_slash_timepoint]
 
-    dag_id = f"manual_{create_legal_id(subject_slash_timepoint)}"
+    dag_id = dag_ids.MANUAL_APPROVAL[subject_slash_timepoint]
 
     brain_mask_review_doc, tumor_segmentation_review_doc, dag_doc = (
         create_documentation_for_manual_steps(subject_slash_timepoint)
@@ -47,12 +46,12 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
 
     with DAG(
         dag_id=dag_id,
-        dag_display_name=f"Manual Approval",
+        dag_display_name=f"Manual Approval - {subject_slash_timepoint}",
         max_active_runs=1,
         schedule=[inlet_dataset],
         start_date=YESTERDAY,
         is_paused_upon_creation=False,
-        tags=[subject_slash_timepoint, "Manual Approval"],
+        tags=[subject_slash_timepoint, dag_tags.MANUAL_APPROVAL],
         doc_md=dag_doc,
     ) as dag:
 

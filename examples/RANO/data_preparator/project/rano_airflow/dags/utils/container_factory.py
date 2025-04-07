@@ -4,7 +4,7 @@ from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.singularity.operators.singularity import SingularityOperator
 from docker.types import Mount
 from abc import ABC, abstractmethod
-from rano_stage import RANOStage
+from utils.rano_stage import RANOStage
 
 
 class _SingletonMeta(type):
@@ -78,10 +78,10 @@ class _OperatorFactory(ABC):
         ]
 
         # Uncomment to mount project directory into the DockerOperator images. Used for development and debugging.
-        # project_dir = os.getenv("PROJECT_DIRECTORY")
-        # mounts.append(
-        #     _mount_helper(host_dirs=[project_dir], container_dirs=["/", "project"])
-        # )
+        project_dir = os.getenv("PROJECT_DIRECTORY")
+        mounts.append(
+            self._mount_helper(host_dirs=[project_dir], container_dirs=["/", "project"])
+        )
 
         return self._operator_constructor(rano_stage, mounts)
 

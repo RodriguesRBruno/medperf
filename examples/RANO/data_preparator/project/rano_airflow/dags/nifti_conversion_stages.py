@@ -1,13 +1,10 @@
 from __future__ import annotations
 from airflow.models.dag import DAG
 
-from container_factory import ContainerOperatorFactory
-from rano_stage import RANOStage
-from utils import (
-    create_legal_id,
-)
-import rano_task_ids
-from subject_datasets import (
+from utils.container_factory import ContainerOperatorFactory
+from utils.rano_stage import RANOStage
+from utils import rano_task_ids, dag_ids, dag_tags
+from utils.subject_datasets import (
     YESTERDAY,
     REPORT_DATASET,
     SUBJECT_TIMEPOINT_LIST,
@@ -18,15 +15,15 @@ from subject_datasets import (
 for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
     outlet_dataset = SUBJECT_NIFTI_DATASETS[subject_slash_timepoint]
 
-    dag_id = f"nifti_{create_legal_id(subject_slash_timepoint)}"
+    dag_id = dag_ids.NIFTI_CONVERSION[subject_slash_timepoint]
     with DAG(
         dag_id=dag_id,
-        dag_display_name=f"NIfTI Conversion",
+        dag_display_name=f"NIfTI Conversion - {subject_slash_timepoint}",
         max_active_runs=1,
         schedule=[REPORT_DATASET],
         start_date=YESTERDAY,
         is_paused_upon_creation=False,
-        tags=[subject_slash_timepoint, "NIfTI Conversion"],
+        tags=[subject_slash_timepoint, dag_tags.NIFTI_CONVERSION],
         doc_md="Converting DICOM images to NIfTI",
     ) as dag:
 

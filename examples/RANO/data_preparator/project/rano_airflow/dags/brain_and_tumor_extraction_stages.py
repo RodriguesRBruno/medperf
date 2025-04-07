@@ -1,13 +1,10 @@
 from __future__ import annotations
 from airflow.models.dag import DAG
 
-from container_factory import ContainerOperatorFactory
-from rano_stage import RANOStage
-from utils import (
-    create_legal_id,
-)
-import rano_task_ids
-from subject_datasets import (
+from utils.container_factory import ContainerOperatorFactory
+from utils.rano_stage import RANOStage
+from utils import rano_task_ids, dag_ids, dag_tags
+from utils.subject_datasets import (
     YESTERDAY,
     SUBJECT_TIMEPOINT_LIST,
     SUBJECT_NIFTI_DATASETS,
@@ -20,16 +17,15 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
     inlet_dataset = SUBJECT_NIFTI_DATASETS[subject_slash_timepoint]
     outlet_dataset = SUBJECT_TUMOR_EXTRACT_DATASETS[subject_slash_timepoint]
 
-    dag_id = f"tumor_{create_legal_id(subject_slash_timepoint)}"
+    dag_id = dag_ids.TUMOR_EXTRACTION[subject_slash_timepoint]
     with DAG(
         dag_id=dag_id,
-        dag_display_name=f"Tumor Extraction",
+        dag_display_name=f"Tumor Extraction - {subject_slash_timepoint}",
         max_active_runs=1,
         schedule=[inlet_dataset],
         start_date=YESTERDAY,
         is_paused_upon_creation=False,
-        tags=[subject_slash_timepoint, "Tumor Extraction"],
-        doc_md="Brain and Tumor Extraction stages",
+        tags=[subject_slash_timepoint, dag_tags.TUMOR_EXTRACTION],
     ) as dag:
 
         AUTO_STAGES = [
