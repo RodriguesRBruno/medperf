@@ -7,9 +7,21 @@ import numpy as np
 import nibabel as nib
 
 from .row_stage import RowStage
-from .utils import get_id_tp, update_row_with_dict, md5_file, load_report
-from .constants import TUMOR_MASK_FOLDER, INTERIM_FOLDER
-from .mlcube_constants import COMPARISON_STAGE_STATUS, GROUND_TRUTH_PATH
+from .utils import (
+    get_id_tp,
+    update_row_with_dict,
+    md5_file,
+    load_report,
+    get_manual_approval_finalized_path,
+)
+from .constants import INTERIM_FOLDER
+from .mlcube_constants import (
+    COMPARISON_STAGE_STATUS,
+    GROUND_TRUTH_PATH,
+    TUMOR_EXTRACTION_REVIEW_PATH,
+    TUMOR_PATH,
+)
+from .env_vars import DATA_DIR
 
 
 class SegmentationComparisonStage(RowStage):
@@ -35,14 +47,14 @@ class SegmentationComparisonStage(RowStage):
 
     def __get_input_path(self, index: Union[str, int]) -> str:
         id, tp = get_id_tp(index)
-        path = os.path.join(
-            self.prev_stage_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER
-        )
+        path = get_manual_approval_finalized_path(id, tp, TUMOR_EXTRACTION_REVIEW_PATH)
         return path
 
     def __get_backup_path(self, index: Union[str, int]) -> str:
         id, tp = get_id_tp(index)
-        path = os.path.join(self.backup_path, id, tp, TUMOR_MASK_FOLDER)
+        path = os.path.join(
+            DATA_DIR, TUMOR_PATH, INTERIM_FOLDER, id, tp, GROUND_TRUTH_PATH
+        )
         return path
 
     def __get_output_path(self, index: Union[str, int]) -> str:
@@ -153,7 +165,7 @@ class SegmentationComparisonStage(RowStage):
         if not os.path.exists(gt_file):
             print("Ground truth file not found, reviewed file most probably renamed")
             report = self.__report_gt_not_found(index, report, reviewed_hash)
-            return report, False
+            raise ValueError("Ground truth file not found")
 
         reviewed_img = nib.load(reviewed_file)
         gt_img = nib.load(gt_file)

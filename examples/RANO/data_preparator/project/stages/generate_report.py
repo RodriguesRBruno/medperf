@@ -7,7 +7,7 @@ import shutil
 from typing import Tuple
 from .utils import has_prepared_folder_structure, md5_dir, get_data_csv_filepath
 from .constants import INTERIM_FOLDER, FINAL_FOLDER, TUMOR_MASK_FOLDER
-from .mlcube_constants import REPORT_STAGE_STATUS
+from .mlcube_constants import REPORT_STAGE_STATUS, FINALIZED_PATH
 
 DICOM_MODALITIES_PREFIX = {
     "fl": "t2_Flair",
@@ -154,7 +154,7 @@ def move_tumor_segmentation(
     in_seg_path = os.path.join(in_subject_path, seg_file)
     tumor_mask_path = os.path.join(interim_path, TUMOR_MASK_FOLDER)
     under_review_path = os.path.join(tumor_mask_path, "under_review")
-    finalized_path = os.path.join(tumor_mask_path, "finalized")
+    finalized_path = os.path.join(tumor_mask_path, FINALIZED_PATH)
     os.makedirs(under_review_path, exist_ok=True)
     os.makedirs(finalized_path, exist_ok=True)
 

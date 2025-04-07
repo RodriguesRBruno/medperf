@@ -10,8 +10,14 @@ import pandas as pd
 from filelock import SoftFileLock
 
 from .env_vars import DATA_DIR, REPORT_PATH, REPORT_LOCK, DATA_SUBDIR
-from .mlcube_constants import OUT_CSV, AUX_FILES_PATH, TUMOR_PATH
-from .constants import INTERIM_FOLDER, TUMOR_MASK_FOLDER
+from .mlcube_constants import (
+    OUT_CSV,
+    AUX_FILES_PATH,
+    FINALIZED_PATH,
+    MANUAL_REVIEW_PATH,
+    UNDER_REVIEW_PATH,
+    TUMOR_EXTRACTION_REVIEW_PATH,
+)
 
 
 def convert_path_to_index(path: str):
@@ -263,7 +269,8 @@ def get_data_csv_filepath(subject_subdir):
 
 
 def find_finalized_subjects():
-    base_finalized_dir = os.path.join(DATA_DIR, TUMOR_PATH, INTERIM_FOLDER)
+    base_finalized_dir = os.path.join(DATA_DIR, MANUAL_REVIEW_PATH)
+    final_finalized_dir = os.path.join(TUMOR_EXTRACTION_REVIEW_PATH, FINALIZED_PATH)
     subject_and_timepoint_list = []
 
     candidate_subjects = get_subdirectories(base_finalized_dir)
@@ -273,7 +280,7 @@ def find_finalized_subjects():
 
         for timepoint in timepoint_dirs:
             timepoint_complete_path = os.path.join(subject_path, timepoint)
-            finalized_path = os.path.join(timepoint_complete_path, TUMOR_MASK_FOLDER)
+            finalized_path = os.path.join(timepoint_complete_path, final_finalized_dir)
             try:
                 path_exists = os.path.exists(finalized_path)
                 path_is_dir = os.path.isdir(finalized_path)
@@ -287,3 +294,22 @@ def find_finalized_subjects():
             except OSError:
                 pass
     return subject_and_timepoint_list
+
+
+def get_manual_approval_base_path(subject_id, timepoint, approval_type):
+    manual_approval_base_path = os.path.join(
+        DATA_DIR, MANUAL_REVIEW_PATH, subject_id, timepoint, approval_type
+    )
+    return manual_approval_base_path
+
+
+def get_manual_approval_finalized_path(subject_id, timepoint, approval_type):
+    base_path = get_manual_approval_base_path(subject_id, timepoint, approval_type)
+    full_path = os.path.join(base_path, FINALIZED_PATH)
+    return full_path
+
+
+def get_manual_approval_under_review_path(subject_id, timepoint, approval_type):
+    base_path = get_manual_approval_base_path(subject_id, timepoint, approval_type)
+    full_path = os.path.join(base_path, UNDER_REVIEW_PATH)
+    return full_path

@@ -4,7 +4,6 @@ from airflow.decorators import task
 from airflow.exceptions import AirflowException
 from container_factory import ContainerOperatorFactory
 from rano_stage import RANOStage
-from datetime import timedelta
 import rano_task_ids
 from subject_datasets import YESTERDAY, ALL_DONE_DATASETS
 import os
@@ -59,16 +58,26 @@ with DAG(
     def manual_confirmation():
         raise AirflowException("This task must be approved manually!")
 
-    consolidation = ContainerOperatorFactory.get_operator(
+    move_labeled_files = ContainerOperatorFactory.get_operator(
         RANOStage(
-            "consolidation_stage",
-            task_display_name="Consolidation Stage",
-            task_id=rano_task_ids.CONSOLIDATION_STAGE,
-            retries=1000,
-            retry_delay=timedelta(minutes=1),
-            retry_exponential_backoff=True,
-            max_retry_delay=timedelta(minutes=15),
+            command="move_labeled_files",
+            task_display_name="Move Labeled Files",
+            task_id=rano_task_ids.MOVE_LABELED_FILES,
         )
     )
 
-    calculate_changed_voxels >> manual_confirmation() >> consolidation
+    consolidation = ContainerOperatorFactory.get_operator(
+        RANOStage(
+            "consolidation_stage",
+            # "--keep-files",  # Uncomment this line to keep files in the /data directory after execution
+            task_display_name="Consolidation Stage",
+            task_id=rano_task_ids.CONSOLIDATION_STAGE,
+        )
+    )
+
+    (
+        calculate_changed_voxels
+        >> manual_confirmation()
+        >> move_labeled_files
+        >> consolidation
+    )

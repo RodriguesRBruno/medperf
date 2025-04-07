@@ -9,6 +9,7 @@ from .mlcube_constants import (
     MANUAL_STAGE_STATUS,
     BRAIN_MASK_CHANGED_FILE,
     PREP_PATH,
+    FINALIZED_PATH,
 )
 from .utils import (
     get_id_tp,
@@ -47,7 +48,11 @@ class ManualStage(RowStage):
     def __get_input_paths(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
         tumor_mask_path = os.path.join(
-            self.prev_stage_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER
+            self.prev_stage_path,
+            INTERIM_FOLDER,
+            id,
+            tp,
+            TUMOR_MASK_FOLDER,
         )
         brain_mask_path = os.path.join(
             self.prev_stage_path, INTERIM_FOLDER, id, tp, self.brain_mask_file
@@ -64,7 +69,9 @@ class ManualStage(RowStage):
 
     def __get_output_path(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
-        path = os.path.join(self.out_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER)
+        path = os.path.join(
+            self.out_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER, FINALIZED_PATH
+        )
         return path
 
     def __get_backup_path(self, index: Union[str, int]):
@@ -199,7 +206,11 @@ class ManualStage(RowStage):
         in_path, brain_path = self.__get_input_paths(index)
         out_path = self.__get_output_path(index)
         bak_path = self.__get_backup_path(index)
-        if not os.path.exists(bak_path):
+        print(f"{in_path=}")
+        print(f"{out_path=}")
+        print(f"{bak_path=}")
+        if not os.path.exists(bak_path) or not os.listdir(bak_path):
+            print("Entered if")
             copy_files(in_path, bak_path)
             set_files_read_only(bak_path)
 
@@ -223,9 +234,8 @@ class ManualStage(RowStage):
             json.dump(brain_mask_changed, f)
         return brain_mask_changed, brain_mask_hash
 
-    def check_finalized_cases(
-        self, index: Union[str, int], report: pd.DataFrame, out_path: str
-    ):
+    def check_finalized_cases(self, index: Union[str, int], report: pd.DataFrame):
+        out_path = self.__get_output_path(index)
         cases = os.listdir(out_path)
 
         if len(cases) > 1:

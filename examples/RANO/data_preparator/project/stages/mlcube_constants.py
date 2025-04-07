@@ -4,11 +4,20 @@ VALID_PATH = "validated"
 PREP_PATH = "prepared"
 BRAIN_PATH = "brain_extracted"
 TUMOR_PATH = "tumor_extracted"
+LABELS_PATH = "labels"
 TUMOR_BACKUP_PATH = ".tumor_segmentation_backup"
 OUT_CSV = "data.csv"
 TRASH_PATH = ".trash"
 INVALID_FILE = ".invalid.txt"
 REPORT_FILE = "report.yaml"
+BRAIN_MASK_FILE = "brainMask_fused.nii.gz"
+
+# Directories used for the Manual Approval steps
+MANUAL_REVIEW_PATH = "manual_review"
+BRAIN_MASK_REVIEW_PATH = "brain_mask"
+TUMOR_EXTRACTION_REVIEW_PATH = "tumor_extraction"
+UNDER_REVIEW_PATH = "under_review"
+FINALIZED_PATH = "finalized"
 
 # Backup segmentation in case the user changes the one being used
 GROUND_TRUTH_PATH = ".ground_truth"

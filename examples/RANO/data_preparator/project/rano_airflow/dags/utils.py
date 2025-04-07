@@ -239,14 +239,14 @@ def _make_manual_stages(subject_subdir):
     ):
         _clear_task_from_same_subject(
             base_task=task_instance,
-            other_task_short_name=rano_task_ids.RETURN_TO_SEGMENTATIONS_VALIDATED,
+            other_task_short_name=rano_task_ids.RETURN_TO_TUMOR_EXTRACTION_REVIEW,
             dag_run=dag_run,
             dag=dag,
             include_downstream=False,
         )
 
     @task(
-        task_id=rano_task_ids.RETURN_TO_SEGMENTATIONS_VALIDATED,
+        task_id=rano_task_ids.RETURN_TO_TUMOR_EXTRACTION_REVIEW,
         task_display_name="Return to Segmentatins Validate",
     )
     def return_to_file_sensor(
@@ -340,7 +340,7 @@ def make_pipeline_for_subject(subject_id, subject_timepoint):
         "--subject-subdir",
         subject_subdir,
         task_display_name="Segment Comparison",
-        task_id=rano_task_ids.SEGMENT_COMPARISON,
+        task_id=rano_task_ids.TUMOR_EXTRACTION_REVIEW,
     )
     segment_comparison = ContainerOperatorFactory.get_operator(segment_comparison_stage)
 

@@ -13,8 +13,18 @@ from .PrepareDataset import (
     generate_tumor_segmentation_fused_images,
     save_screenshot,
 )
-from .utils import get_id_tp
-from .mlcube_constants import GROUND_TRUTH_PATH
+from .utils import (
+    get_id_tp,
+    get_manual_approval_under_review_path,
+    get_manual_approval_finalized_path,
+)
+from .mlcube_constants import (
+    GROUND_TRUTH_PATH,
+    TUMOR_EXTRACTION_REVIEW_PATH,
+    BRAIN_MASK_REVIEW_PATH,
+    BRAIN_MASK_FILE,
+)
+from .constants import INTERIM_FOLDER, FINAL_FOLDER
 
 MODALITY_MAPPING = {
     "t1c": "t1c",
@@ -102,7 +112,7 @@ class ExtractNnUNet(Extract):
         shutil.rmtree(tmp_out_path, ignore_errors=True)
         os.makedirs(tmp_subject_path)
         os.makedirs(tmp_out_path)
-        in_modalities_path = os.path.join(path, "DataForFeTS", id, tp)
+        in_modalities_path = os.path.join(path, FINAL_FOLDER, id, tp)
         input_modalities = {}
         for modality_file in os.listdir(in_modalities_path):
             if not modality_file.endswith(".nii.gz"):
@@ -132,7 +142,7 @@ class ExtractNnUNet(Extract):
         total_time = end - start
         print(f"Total time elapsed is {total_time} seconds")
 
-    def __finalize_pred(self, tmp_out_path, out_pred_filepath):
+    def __finalize_pred(self, tmp_out_path, out_pred_filepath, *copy_paths):
         # We assume there's only one file in out_path
         pred = None
         for file in os.listdir(tmp_out_path):
@@ -144,19 +154,44 @@ class ExtractNnUNet(Extract):
 
         pred_filepath = os.path.join(tmp_out_path, pred)
         shutil.move(pred_filepath, out_pred_filepath)
+        for copy_path in copy_paths:
+            shutil.copy(out_pred_filepath, copy_path)
         return out_pred_filepath
 
     def _process_case(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
         subject_id = f"{id}_{tp}"
+
         models = self.__get_models()
         outputs = []
         images_for_fusion = []
-        out_path = os.path.join(self.out_path, "DataForQC", id, tp)
-        out_pred_path = os.path.join(out_path, "TumorMasksForQC")
-        ground_truth_path = os.path.join(out_path, GROUND_TRUTH_PATH)
+        out_path = os.path.join(self.out_path, INTERIM_FOLDER, id, tp)
+        out_pred_path = os.path.join(out_path, GROUND_TRUTH_PATH)
+        finalized_tumor_path = get_manual_approval_finalized_path(
+            id, tp, TUMOR_EXTRACTION_REVIEW_PATH
+        )
+        under_review_tumor_path = get_manual_approval_under_review_path(
+            id, tp, TUMOR_EXTRACTION_REVIEW_PATH
+        )
+        finalized_brain_mask_path = get_manual_approval_finalized_path(
+            id, tp, BRAIN_MASK_REVIEW_PATH
+        )
+        under_review_brain_mask_path = get_manual_approval_under_review_path(
+            id, tp, BRAIN_MASK_REVIEW_PATH
+        )
+        brain_mask_filepath = os.path.join(out_path, BRAIN_MASK_FILE)
+        brain_mask_review_filepath = os.path.join(
+            under_review_brain_mask_path, BRAIN_MASK_FILE
+        )
 
-        for path_to_create in [out_pred_path, ground_truth_path]:
+        for path_to_create in [
+            out_pred_path,
+            finalized_tumor_path,
+            under_review_tumor_path,
+            finalized_brain_mask_path,
+            under_review_brain_mask_path,
+            brain_mask_review_filepath,
+        ]:
             os.makedirs(path_to_create, exist_ok=True)
 
         for i, model in enumerate(models):
@@ -164,11 +199,13 @@ class ExtractNnUNet(Extract):
             tmp_data_path, tmp_out_path, input_modalities = self.__prepare_case(
                 self.out_path, id, tp, order
             )
-            out_pred_filepath = os.path.join(
-                out_pred_path, f"{id}_{tp}_tumorMask_model_{i}.nii.gz"
-            )
+            filename = f"{id}_{tp}_tumorMask_model_{i}.nii.gz"
+            out_pred_filepath = os.path.join(out_pred_path, filename)
+            under_review_filepath = os.path.join(under_review_tumor_path, filename)
             self.__run_model(model, tmp_data_path, tmp_out_path)
-            output = self.__finalize_pred(tmp_out_path, out_pred_filepath)
+            output = self.__finalize_pred(
+                tmp_out_path, out_pred_filepath, under_review_filepath
+            )
             outputs.append(output)
             images_for_fusion.append(sitk.ReadImage(output, sitk.sitkUInt8))
 
@@ -192,3 +229,4 @@ class ExtractNnUNet(Extract):
                 ),
                 output,
             )
+        shutil.copy(brain_mask_filepath, brain_mask_review_filepath)

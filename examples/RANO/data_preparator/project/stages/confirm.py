@@ -7,9 +7,18 @@ import pandas as pd
 from pandas import DataFrame
 
 from .dset_stage import DatasetStage
-from .utils import get_id_tp, load_report, find_finalized_subjects
-from .constants import TUMOR_MASK_FOLDER, INTERIM_FOLDER, FINAL_FOLDER
-from .mlcube_constants import CONFIRM_STAGE_STATUS
+from .utils import (
+    get_id_tp,
+    load_report,
+    find_finalized_subjects,
+    write_report,
+    get_manual_approval_finalized_path,
+)
+from .constants import FINAL_FOLDER
+from .mlcube_constants import (
+    CONFIRM_STAGE_STATUS,
+    TUMOR_EXTRACTION_REVIEW_PATH,
+)
 from .env_vars import DATA_DIR
 
 
@@ -43,9 +52,8 @@ class ConfirmStage(DatasetStage):
 
     def __get_input_label_path(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
-        path = os.path.join(
-            self.prev_stage_path, INTERIM_FOLDER, id, tp, TUMOR_MASK_FOLDER, "finalized"
-        )
+        path = get_manual_approval_finalized_path(id, tp, TUMOR_EXTRACTION_REVIEW_PATH)
+
         case = os.listdir(path)[0]
 
         return os.path.join(path, case)
@@ -73,7 +81,7 @@ class ConfirmStage(DatasetStage):
         response_path = os.path.join(self.out_data_path, self.response_file)
 
         with open(prompt_path, "w") as f:
-            f.write(str(msg))
+            f.write(msg)
 
         while not os.path.exists(response_path):
             sleep(1)
@@ -157,12 +165,8 @@ class ConfirmStage(DatasetStage):
             f.write(str(rounded_percent))
         return
 
-        confirmed = self.__confirm(exact_match_percent)
-
-        if not confirmed:
-            report = self.__report_failure(report)
-            raise ValueError("Report not accepted by user!")
-            return report, False
-
+    def move_labels(self):
+        report = load_report()
         report = report.apply(self.__process_row, axis=1)
+        write_report(report)
         return report, True
