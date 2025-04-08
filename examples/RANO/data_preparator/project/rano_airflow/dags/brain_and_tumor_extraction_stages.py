@@ -1,3 +1,11 @@
+"""
+This DAG runs the Brain and Tumor Extraction stages.
+This DAG is triggered by the "NIfTI dataset, which is triggered once NIfTI conversion finishes.
+The "NIfTI" dataset can also be triggered in the Manual Review DAG in case the Brain Mask is modified.
+In this situation, this DAG (Brain and Tumor Extraction) will run again using the new Brain Mask.
+Once finished, this DAG writes to the Tumor dataset, which signals that Manual Review can proceed.
+"""
+
 from __future__ import annotations
 from airflow.models.dag import DAG
 

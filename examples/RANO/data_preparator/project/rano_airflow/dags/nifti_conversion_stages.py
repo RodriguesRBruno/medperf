@@ -1,3 +1,9 @@
+"""
+This DAG runs the NIfTI conversion step, as well as the required CSV creation before that.
+This DAG is triggered by the "report" dataset, which is triggered once initial setup finishes.
+Once finished, it writes to the NIfTI dataset, which signals that Brain Extraction can proceed.
+"""
+
 from __future__ import annotations
 from airflow.models.dag import DAG
 

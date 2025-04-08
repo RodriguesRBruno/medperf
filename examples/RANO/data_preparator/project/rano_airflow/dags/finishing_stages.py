@@ -1,3 +1,12 @@
+"""
+This DAG runs the finalizing stages of the pipeline.
+It includes calculating how many of the Tumor Segmentations have been modified by the user,
+a manual confirmation step (which the user must manually set as SUCCESS in the Airflow UI),
+consolidating data provided by the pipeline, a final sanity_check and metrics generation.
+This DAG will only run once all Manual Approval DAGs (for each subject/timepoint) have
+been completed.
+"""
+
 from __future__ import annotations
 from airflow.models.dag import DAG
 from airflow.decorators import task

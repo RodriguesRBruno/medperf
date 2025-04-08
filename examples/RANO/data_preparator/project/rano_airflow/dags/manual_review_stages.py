@@ -1,3 +1,17 @@
+"""
+This DAG runs the Manual Approval step.
+This DAG is triggered by the "Tumor" dataset, which is triggered once bBrain and Tumor Extraction Finishes.
+The "Tumor" dataset can also be triggered by this DAG in case no changes are detected to the automatic Brain Mask
+and the automatic Tumor Segmentation has not been approved yet. This DAG will run continuously scanning for either
+a modified Brain Mask or an accepted Tumor Segmentation until either is found.
+If the Brain Mask is modified, this DAG will trigger the "NIfTI" dataset, causing the pipelin to execute the Brain
+and Tumor Extraction (that come AFTER NIfTI conversion) again with the new Brain Mask.
+If the automatic Tumor Segmentation is accepted, or if a modified Tumor Segmentation is provided, the pipeline will
+proceed to the Segmentation Comparison stage.
+Please read the DAG documentation in the UI or in the provided instructions document for further instructions on
+how to provide a finalized Tumor Segmentation and/or Brain Mask correction in a way that the pipeline can automatically detect.
+"""
+
 from __future__ import annotations
 from airflow.models.dag import DAG
 
