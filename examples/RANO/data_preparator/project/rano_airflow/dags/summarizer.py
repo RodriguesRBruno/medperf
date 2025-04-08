@@ -90,20 +90,28 @@ with DAG(
 
             if dag_tag == dag_tags.MANUAL_APPROVAL:
                 # Report whole manual approve DAG as just one thing; no need to go into detail
+                state = run_obj.state if run_obj else State.NONE
                 update_dict = {
                     "Task Name": "Manual Approval Stage",
                     "DAG Tag": dag_tag,
-                    "Task Status": run_obj.state,
+                    "Task Status": state,
                     "SubjectID": subject_id,
                 }
                 task_df = pd.DataFrame([update_dict])
                 progress_df = pd.concat([progress_df, task_df])
             else:
-                for task_instance in run_obj.get_task_instances():
+                if run_obj is None:
+                    task_list = all_dags[dag_id].tasks
+                    for task in task_list:
+                        task.state = State.NONE
+                else:
+                    task_list = run_obj.get_task_instances()
+
+                for task in task_list:
                     update_dict = {
-                        "Task Name": task_instance.task_display_name,
+                        "Task Name": task.task_display_name,
                         "DAG Tag": dag_tag,
-                        "Task Status": task_instance.state,
+                        "Task Status": task.state,
                         "SubjectID": subject_id,
                     }
                     task_df = pd.DataFrame([update_dict])
@@ -120,9 +128,9 @@ with DAG(
 
         for task_name in all_tasks:
             relevant_df = progress_df[progress_df["Task Name"] == task_name]
-            success_ratio = len(relevant_df["Task Status"] == State.SUCCESS) / len(
-                relevant_df
-            )
+            success_ratio = len(
+                relevant_df[relevant_df["Task Status"] == State.SUCCESS]
+            ) / len(relevant_df)
             sucess_percentage = round(success_ratio * 100, 3)
             dag_tag_list = relevant_df["DAG Tag"].unique()
             for dag_tag in dag_tag_list:
