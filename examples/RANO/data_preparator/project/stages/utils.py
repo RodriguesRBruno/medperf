@@ -313,3 +313,23 @@ def get_manual_approval_under_review_path(subject_id, timepoint, approval_type):
     base_path = get_manual_approval_base_path(subject_id, timepoint, approval_type)
     full_path = os.path.join(base_path, UNDER_REVIEW_PATH)
     return full_path
+
+
+def safe_remove(path_to_remove: str):
+    try:
+        os.remove(path_to_remove)
+    except FileNotFoundError:
+        pass
+
+
+def delete_empty_directory(path_to_directory: str):
+    if os.path.isdir(path_to_directory):
+        inside_this_dir = os.listdir(path_to_directory)
+        for subdir in inside_this_dir:
+            complete_path = os.path.join(path_to_directory, subdir)
+            delete_empty_directory(complete_path)
+
+        # List again, could be empty now
+        inside_this_dir = os.listdir(path_to_directory)
+        if not inside_this_dir:
+            shutil.rmtree(path_to_directory)

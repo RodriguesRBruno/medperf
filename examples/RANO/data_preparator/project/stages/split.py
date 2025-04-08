@@ -8,11 +8,13 @@ from .dset_stage import DatasetStage
 from .utils import (
     get_id_tp,
     cleanup_storage,
-    get_subdirectories,
+    safe_remove,
     find_finalized_subjects,
+    delete_empty_directory,
 )
-from .mlcube_constants import DONE_STAGE_STATUS
-from .constants import TUMOR_MASK_FOLDER
+from .mlcube_constants import DONE_STAGE_STATUS, METADATA_PATH
+from .env_vars import WORKSPACE_DIR
+from .constants import DICOM_ANON_FILENAME, DICOM_COLLAB_FILENAME
 
 
 def row_to_path(row: pd.Series) -> str:
@@ -77,6 +79,56 @@ class SplitStage(DatasetStage):
 
         return report
 
+    def consolidate_metadata(self):
+        base_metadata_dir = os.path.join(WORKSPACE_DIR, METADATA_PATH)
+        anon_dict = {}
+        collab_dict = {}
+        files_to_delete = set()
+        for subject_id_dir in os.listdir(base_metadata_dir):
+            try:
+                subject_complete_dir = os.path.join(base_metadata_dir, subject_id_dir)
+
+                for timepoint_dir in os.listdir(subject_complete_dir):
+                    subject_timepoint_complete_dir = os.path.join(
+                        subject_complete_dir, timepoint_dir
+                    )
+                    subject_metadata_path = os.path.join(subject_timepoint_complete_dir)
+                    if not os.path.isdir(subject_metadata_path):
+                        continue
+
+                    anon_yaml = os.path.join(subject_metadata_path, DICOM_ANON_FILENAME)
+                    collab_yaml = os.path.join(
+                        subject_metadata_path, DICOM_COLLAB_FILENAME
+                    )
+
+                    update_tuples = [(anon_yaml, anon_dict), (collab_yaml, collab_dict)]
+                    for yaml_file, data_dict in update_tuples:
+                        if not os.path.isfile(yaml_file):
+                            continue
+
+                        with open(yaml_file, "r") as f:
+                            update_dict = yaml.safe_load(f)
+
+                        data_dict.update(**update_dict)
+                        files_to_delete.add(yaml_file)
+            except OSError:
+                pass
+
+        final_anon_file = os.path.join(base_metadata_dir, DICOM_ANON_FILENAME)
+        final_collab_file = os.path.join(base_metadata_dir, DICOM_COLLAB_FILENAME)
+
+        write_tuples = [(final_anon_file, anon_dict), (final_collab_file, collab_dict)]
+        for file_path, data in write_tuples:
+            with open(file_path, "w") as f:
+                yaml.dump(data, f)
+
+        for file in files_to_delete:
+            safe_remove(file)
+
+        for subdir in os.listdir(base_metadata_dir):
+            complete_subdir_path = os.path.join(base_metadata_dir, subdir)
+            delete_empty_directory(complete_subdir_path)
+
     def execute(self, report: pd.DataFrame = None) -> pd.DataFrame:
         with open(self.params, "r") as f:
             params = yaml.safe_load(f)
@@ -107,6 +159,7 @@ class SplitStage(DatasetStage):
         split_df.loc[train_mask].to_csv(self.train_csv_path, index=False)
         split_df.loc[val_mask].to_csv(self.val_csv_path, index=False)
 
+        self.consolidate_metadata()
         report = self.__report_success(report)
         cleanup_storage(self.staging_folders)
 
