@@ -1,6 +1,9 @@
+from datetime import datetime, timedelta
 import os
 import yaml
 from typing import Literal, Any
+
+YESTERDAY = datetime.today() - timedelta(days=1)
 
 AIRFLOW_DATA_DIR = os.getenv("AIRFLOW_DATA_DIR")
 INPUT_DATA_DIR = os.getenv("AIRFLOW_INPUT_DATA_DIR")

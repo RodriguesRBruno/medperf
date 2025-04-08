@@ -9,11 +9,11 @@ Once finished, this DAG writes to the Tumor dataset, which signals that Manual R
 from __future__ import annotations
 from airflow.models.dag import DAG
 
+from utils.utils import YESTERDAY
 from utils.container_factory import ContainerOperatorFactory
 from utils.rano_stage import RANOStage
 from utils import rano_task_ids, dag_ids, dag_tags
 from utils.subject_datasets import (
-    YESTERDAY,
     SUBJECT_TIMEPOINT_LIST,
     SUBJECT_NIFTI_DATASETS,
     SUBJECT_TUMOR_EXTRACT_DATASETS,

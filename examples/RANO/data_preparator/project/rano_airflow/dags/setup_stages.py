@@ -9,10 +9,11 @@ stages have been executed.
 
 from __future__ import annotations
 from airflow.models.dag import DAG
+from utils.utils import YESTERDAY
 from utils.container_factory import ContainerOperatorFactory
 from utils.rano_stage import RANOStage
 from utils import rano_task_ids, dag_ids, dag_tags
-from utils.subject_datasets import YESTERDAY, REPORT_DATASET
+from utils.subject_datasets import REPORT_DATASET
 
 
 with DAG(

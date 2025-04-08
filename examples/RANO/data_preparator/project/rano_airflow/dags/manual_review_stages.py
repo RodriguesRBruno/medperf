@@ -15,6 +15,7 @@ how to provide a finalized Tumor Segmentation and/or Brain Mask correction in a 
 from __future__ import annotations
 from airflow.models.dag import DAG
 
+from utils.utils import YESTERDAY
 from utils.container_factory import ContainerOperatorFactory
 from utils.rano_stage import RANOStage
 from utils.utils import (
@@ -23,7 +24,6 @@ from utils.utils import (
 )
 from utils import rano_task_ids, dag_ids, dag_tags
 from utils.subject_datasets import (
-    YESTERDAY,
     SUBJECT_NIFTI_DATASETS,
     SUBJECT_TIMEPOINT_LIST,
     SUBJECT_TUMOR_EXTRACT_DATASETS,

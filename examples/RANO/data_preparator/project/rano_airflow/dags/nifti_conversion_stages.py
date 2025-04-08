@@ -7,11 +7,11 @@ Once finished, it writes to the NIfTI dataset, which signals that Brain Extracti
 from __future__ import annotations
 from airflow.models.dag import DAG
 
+from utils.utils import YESTERDAY
 from utils.container_factory import ContainerOperatorFactory
 from utils.rano_stage import RANOStage
 from utils import rano_task_ids, dag_ids, dag_tags
 from utils.subject_datasets import (
-    YESTERDAY,
     REPORT_DATASET,
     SUBJECT_TIMEPOINT_LIST,
     SUBJECT_NIFTI_DATASETS,

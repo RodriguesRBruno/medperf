@@ -11,9 +11,10 @@ from __future__ import annotations
 from airflow.models.dag import DAG
 from airflow.decorators import task
 from airflow.exceptions import AirflowException
+from utils.utils import YESTERDAY
 from utils.container_factory import ContainerOperatorFactory
 from utils.rano_stage import RANOStage
-from utils.subject_datasets import YESTERDAY, ALL_DONE_DATASETS
+from utils.subject_datasets import ALL_DONE_DATASETS
 from utils import rano_task_ids, dag_ids, dag_tags
 import os
 

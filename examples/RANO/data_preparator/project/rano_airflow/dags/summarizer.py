@@ -10,9 +10,8 @@ from airflow.decorators import task
 from airflow.models.dag import DAG
 from airflow.models.dagbag import DagBag
 from airflow.models.dagrun import DagRun
-from airflow.models.taskinstance import TaskInstance
 from utils import dag_ids, dag_tags, rano_task_ids
-from utils.subject_datasets import YESTERDAY
+from utils.utils import YESTERDAY
 from utils.utils import ReportSummary
 from datetime import timedelta
 from airflow.utils.state import State

@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from utils.utils import read_subject_directories
 from airflow.datasets import Dataset
-from datetime import datetime, timedelta
-
-YESTERDAY = datetime.today() - timedelta(days=1)
 
 SUBJECT_TIMEPOINT_LIST = read_subject_directories()
 
