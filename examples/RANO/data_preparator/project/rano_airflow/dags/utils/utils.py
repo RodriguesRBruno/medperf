@@ -1,5 +1,40 @@
 import os
-from typing import Literal
+import yaml
+from typing import Literal, Any
+
+AIRFLOW_DATA_DIR = os.getenv("AIRFLOW_DATA_DIR")
+INPUT_DATA_DIR = os.getenv("AIRFLOW_INPUT_DATA_DIR")
+
+
+class ReportSummary:
+
+    _REPORT_SUMMARY_FAILE = os.path.join(
+        AIRFLOW_DATA_DIR, "report_summary.yaml"
+    )  # TODO maybe use Workspace dir?
+
+    def __init__(
+        self,
+        execution_status: Literal["running", "failure", "done"],
+        progress_dict: dict[str, Any] = None,
+    ):
+        self.execution_status = execution_status
+        self.progress_dict = progress_dict if progress_dict is not None else {}
+
+    def to_dict(self):
+        report_dict = {
+            "execution_status": self.execution_status,
+            "progress": self.progress_dict,
+        }
+        return report_dict
+
+    def write_yaml(self):
+        report_dict = self.to_dict()
+        with open(self._REPORT_SUMMARY_FAILE, "w") as f:
+            yaml.dump(
+                report_dict,
+                f,
+                sort_keys=False,
+            )
 
 
 def create_legal_id(subject_slash_timepoint, restrictive=False):
@@ -14,7 +49,6 @@ def create_legal_id(subject_slash_timepoint, restrictive=False):
 
 
 def read_subject_directories():
-    INPUT_DATA_DIR = os.getenv("AIRFLOW_INPUT_DATA_DIR")
 
     subject_slash_timepoint_list = []
 
@@ -35,7 +69,6 @@ def get_manual_review_directory(
     review_state: Literal["under_review", "finalized"],
     include_host_path: bool = False,
 ):
-    AIRFLOW_DATA_DIR = os.getenv("AIRFLOW_DATA_DIR")
 
     if review_type == "tumor_extraction":
         FILE_NAME = f"{'_'.join(subject_slash_timepoint.split(os.sep))}_tumorMask_model_0.nii.gz"

@@ -12,6 +12,7 @@ def _make_dag_id_dict(id_str):
 
 SETUP = "rano_setup"
 FINISH = "rano_end"
+SUMMARIZER = "rano_summarizer"
 NIFTI_CONVERSION = _make_dag_id_dict("nifti")
 TUMOR_EXTRACTION = _make_dag_id_dict("tumor")
 MANUAL_APPROVAL = _make_dag_id_dict("manual")
