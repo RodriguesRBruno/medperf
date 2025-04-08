@@ -22,17 +22,14 @@ with DAG(
     dag_display_name="Summarizer",
     catchup=True,
     max_active_runs=1,
-    schedule=timedelta(minutes=30),
+    schedule=timedelta(seconds=30),
     start_date=YESTERDAY,
     is_paused_upon_creation=False,
     doc_md="This DAG generates and periodically updates the report_summary.yaml file that is sent to the MedPerf servers.",
     tags=[dag_tags.SUMMARIZER],
 ) as dag:
 
-    @task(task_id=rano_task_ids.SUMMARIZER, task_display_name="Pipeline Summarizer")
-    def rano_summarizer():
-        import pandas as pd  # Import in task to not slow down dag parsing
-
+    def _get_dags_and_subject_tags() -> tuple[dict[str, DAG], set[str]]:
         dag_bag: DagBag = DagBag(include_examples=False)
         relevant_dags: list[DAG] = [
             dag
@@ -63,6 +60,10 @@ with DAG(
                 ),
             )
         }
+
+        return all_dags, subject_tags
+
+    def _get_most_recent_dag_runs(all_dags: dict[str, DAG]) -> dict[str, DagRun | None]:
         setup_dag = all_dags[dag_ids.SETUP]
         last_setup_dag_run: DagRun = setup_dag.get_last_dagrun(
             include_externally_triggered=True
@@ -87,6 +88,15 @@ with DAG(
                 )
                 for dag_id, dag_run in most_recent_dag_runs.items()
             }
+
+        return most_recent_dag_runs
+
+    def _get_report_summary(
+        all_dags: dict[str, DAG],
+        subject_tags: set[str],
+        most_recent_dag_runs: dict[str, DagRun | None],
+    ):
+        import pandas as pd  # Import in task to not slow down dag parsing
 
         progress_df = pd.DataFrame(
             {
@@ -163,8 +173,25 @@ with DAG(
                 )
             }
 
+        execution_status = "done"
+        for dag_id, task_dict in summary_dict.items():
+            for task_name, completion in task_dict.items():
+                if completion < 100.0:
+                    execution_status = "running"
+                    break
+
         report_summary = ReportSummary(
-            execution_status="running", progress_dict=summary_dict
+            execution_status=execution_status, progress_dict=summary_dict
+        )
+        return report_summary
+
+    @task(task_id=rano_task_ids.SUMMARIZER, task_display_name="Pipeline Summarizer")
+    def rano_summarizer():
+
+        all_dags, subject_tags = _get_dags_and_subject_tags()
+        most_recent_dag_runs = _get_most_recent_dag_runs(all_dags)
+        report_summary = _get_report_summary(
+            all_dags, subject_tags, most_recent_dag_runs
         )
         report_summary.write_yaml()
 
