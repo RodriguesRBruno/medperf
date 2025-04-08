@@ -17,7 +17,6 @@ from airflow.models.dag import DAG
 
 from utils.utils import YESTERDAY
 from utils.container_factory import ContainerOperatorFactory
-from utils.rano_stage import RANOStage
 from utils.utils import (
     create_documentation_for_manual_steps,
     get_manual_review_directory,
@@ -80,16 +79,13 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
             max_wait=20,
         )
 
-        segment_comparison_stage = RANOStage(
+        segment_comparison_stage = ContainerOperatorFactory.get_operator(
             "segmentation_comparison",
             "--subject-subdir",
             subject_slash_timepoint,
             task_display_name="Segment Comparison",
             task_id=rano_task_ids.SEGMENT_COMPARISON,
             outlets=[outlet_dataset],
-        )
-        segment_comparison = ContainerOperatorFactory.get_operator(
-            segment_comparison_stage
         )
 
         brain_mask_modified = FileSensor(
@@ -104,7 +100,7 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
             trigger_rule=TriggerRule.ALL_FAILED,
         )
 
-        rollback_stage = RANOStage(
+        return_to_brain_extract_stage = ContainerOperatorFactory.get_operator(
             "rollback_to_brain_extract",
             "--subject-subdir",
             subject_slash_timepoint,
@@ -113,9 +109,7 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
             outlets=[nifti_dataset],
         )
 
-        return_to_brain_extract = ContainerOperatorFactory.get_operator(rollback_stage)
-
-        return_to_manual_approval = EmptyOperator(
+        return_to_manual_approval_stage = EmptyOperator(
             task_id=rano_task_ids.RETURN_TO_TUMOR_EXTRACTION_REVIEW,
             task_display_name="Return to Tumor Segmentation Review",
             outlets=[
@@ -123,8 +117,8 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
             ],  # Repeat this DAG until approved or brain mask changes,
             trigger_rule=TriggerRule.ALL_FAILED,
         )
-        tumor_extraction_reviewed >> Label("Reviewed") >> segment_comparison
+        tumor_extraction_reviewed >> Label("Reviewed") >> segment_comparison_stage
         tumor_extraction_reviewed >> Label("NOT Reviewed") >> brain_mask_modified
 
-        brain_mask_modified >> Label("Yes") >> return_to_brain_extract
-        brain_mask_modified >> Label("No") >> return_to_manual_approval
+        brain_mask_modified >> Label("Yes") >> return_to_brain_extract_stage
+        brain_mask_modified >> Label("No") >> return_to_manual_approval_stage

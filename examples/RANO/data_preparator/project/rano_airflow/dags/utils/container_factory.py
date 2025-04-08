@@ -4,7 +4,6 @@ from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.singularity.operators.singularity import SingularityOperator
 from docker.types import Mount
 from abc import ABC, abstractmethod
-from utils.rano_stage import RANOStage
 
 
 class _SingletonMeta(type):
@@ -46,8 +45,8 @@ class _ContainerOperatorFactory(metaclass=_SingletonMeta):
         elif container_type == "singularity":
             self._operator_factory = _SingularityOperatorFactory(image)
 
-    def get_operator(self, rano_stage: RANOStage):
-        return self._operator_factory.get_operator(rano_stage)
+    def get_operator(self, *commands, **kwargs):
+        return self._operator_factory.get_operator(*commands, **kwargs)
 
 
 class _OperatorFactory(ABC):
@@ -56,11 +55,13 @@ class _OperatorFactory(ABC):
         self.image_name = image_name
 
     @abstractmethod
-    def _mount_returner(self, host_dir, container_dir):
+    def _mount_returner(self, host_di: str, container_dir: str):
         pass
 
     @abstractmethod
-    def _operator_constructor(self, rano_stage: RANOStage, mounts):
+    def _operator_constructor(
+        self, *commands: str, mounts: list[Mount | str], **kwargs
+    ):
         pass
 
     def _mount_helper(self, host_dirs: list[str], container_dirs: list[str]):
@@ -68,7 +69,7 @@ class _OperatorFactory(ABC):
         container_dir = os.path.join(*container_dirs)
         return self._mount_returner(host_dir, container_dir)
 
-    def get_operator(self, rano_stage: RANOStage):
+    def get_operator(self, *commands: str, **kwargs):
         workspace_host_dir = os.getenv("WORKSPACE_DIRECTORY")
 
         mounts = [
@@ -78,12 +79,12 @@ class _OperatorFactory(ABC):
         ]
 
         # Uncomment to mount project directory into the DockerOperator images. Used for development and debugging.
-        # project_dir = os.getenv("PROJECT_DIRECTORY")
-        # mounts.append(
-        #     self._mount_helper(host_dirs=[project_dir], container_dirs=["/", "project"])
-        # )
+        project_dir = os.getenv("PROJECT_DIRECTORY")
+        mounts.append(
+            self._mount_helper(host_dirs=[project_dir], container_dirs=["/", "project"])
+        )
 
-        return self._operator_constructor(rano_stage, mounts)
+        return self._operator_constructor(*commands, mounts=mounts, **kwargs)
 
 
 class _DockerOperatorFactory(_OperatorFactory):
@@ -91,17 +92,15 @@ class _DockerOperatorFactory(_OperatorFactory):
         return Mount(source=host_dir, target=container_dir, type="bind")
 
     def _operator_constructor(
-        self, rano_stage: RANOStage, mounts: list[Mount]
+        self, *commands: str, mounts: list[Mount | str], **kwargs
     ) -> DockerOperator:
 
         return DockerOperator(
             image=self.image_name,
-            command=[rano_stage.command, *rano_stage.command_args],
+            command=list(commands),
             mounts=mounts,
-            task_id=rano_stage.task_id,
-            task_display_name=rano_stage.task_display_name,
             auto_remove="success",
-            **rano_stage.operator_kwargs,
+            **kwargs,
         )
 
 
@@ -110,21 +109,19 @@ class _SingularityOperatorFactory(_OperatorFactory):
         return ":".join([host_dir, container_dir])
 
     def _operator_constructor(
-        self, rano_stage: RANOStage, mounts: list[str]
+        self, *commands: str, mounts: list[Mount | str], **kwargs
     ) -> SingularityOperator:
 
         command_args = list(
-            rano_stage.command_args
+            commands[1:]
         )  # Must be a list for Airflow's SingularityOperator
         return SingularityOperator(
             image=self.image_name,
-            command=rano_stage.command,
+            command=commands[0],
             start_command=command_args,
-            volumes=mounts,
-            task_id=rano_stage.task_id,
-            task_display_name=rano_stage.task_display_name,
             auto_remove=True,
-            **rano_stage.operator_kwargs,
+            volumes=mounts,
+            **kwargs,
         )
 
 

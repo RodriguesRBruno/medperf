@@ -13,7 +13,6 @@ from airflow.decorators import task
 from airflow.exceptions import AirflowException
 from utils.utils import YESTERDAY
 from utils.container_factory import ContainerOperatorFactory
-from utils.rano_stage import RANOStage
 from utils.subject_datasets import ALL_DONE_DATASETS
 from utils import rano_task_ids, dag_ids, dag_tags
 import os
@@ -53,11 +52,9 @@ with DAG(
 ) as dag:
 
     calculate_changed_voxels = ContainerOperatorFactory.get_operator(
-        RANOStage(
-            command="calculate_changed_voxels",
-            task_display_name="Calculate Changed Voxels",
-            task_id=rano_task_ids.CALCULATE_CHANGED_VOXELS,
-        )
+        "calculate_changed_voxels",
+        task_display_name="Calculate Changed Voxels",
+        task_id=rano_task_ids.CALCULATE_CHANGED_VOXELS,
     )
 
     @task(
@@ -69,35 +66,27 @@ with DAG(
         raise AirflowException("This task must be approved manually!")
 
     move_labeled_files = ContainerOperatorFactory.get_operator(
-        RANOStage(
-            command="move_labeled_files",
-            task_display_name="Move Labeled Files",
-            task_id=rano_task_ids.MOVE_LABELED_FILES,
-        )
+        "move_labeled_files",
+        task_display_name="Move Labeled Files",
+        task_id=rano_task_ids.MOVE_LABELED_FILES,
     )
 
     consolidation = ContainerOperatorFactory.get_operator(
-        RANOStage(
-            "consolidation_stage",
-            # "--keep-files",  # Uncomment this line to keep files in the /data directory after execution
-            task_display_name="Consolidation Stage",
-            task_id=rano_task_ids.CONSOLIDATION_STAGE,
-        )
+        "consolidation_stage",
+        # "--keep-files",  # Uncomment this line to keep files in the /data directory after execution
+        task_display_name="Consolidation Stage",
+        task_id=rano_task_ids.CONSOLIDATION_STAGE,
     )
 
     sanity_check = ContainerOperatorFactory.get_operator(
-        RANOStage(
-            "sanity_check",
-            task_display_name="Sanity Check",
-            task_id=rano_task_ids.SANITY_CHECK,
-        )
+        "sanity_check",
+        task_display_name="Sanity Check",
+        task_id=rano_task_ids.SANITY_CHECK,
     )
     metrics = ContainerOperatorFactory.get_operator(
-        RANOStage(
-            "metrics",
-            task_display_name="Evaluate Metrics",
-            task_id=rano_task_ids.METRICS,
-        )
+        "metrics",
+        task_display_name="Evaluate Metrics",
+        task_id=rano_task_ids.METRICS,
     )
     (
         calculate_changed_voxels

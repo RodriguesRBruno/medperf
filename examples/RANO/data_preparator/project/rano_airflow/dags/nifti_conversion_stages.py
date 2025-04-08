@@ -9,7 +9,6 @@ from airflow.models.dag import DAG
 
 from utils.utils import YESTERDAY
 from utils.container_factory import ContainerOperatorFactory
-from utils.rano_stage import RANOStage
 from utils import rano_task_ids, dag_ids, dag_tags
 from utils.subject_datasets import (
     REPORT_DATASET,
@@ -33,27 +32,20 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
         doc_md="Converting DICOM images to NIfTI",
     ) as dag:
 
-        AUTO_STAGES = [
-            RANOStage(
-                "make_csv",
-                "--subject-subdir",
-                subject_slash_timepoint,
-                task_display_name="Make CSV",
-                task_id=rano_task_ids.MAKE_CSV,
-            ),
-            RANOStage(
-                "convert_nifti",
-                "--subject-subdir",
-                subject_slash_timepoint,
-                task_display_name="Convert to NIfTI",
-                task_id=rano_task_ids.CONVERT_NIFTI,
-                outlets=[outlet_dataset],
-            ),
-        ]
+        make_csv_stage = ContainerOperatorFactory.get_operator(
+            "make_csv",
+            "--subject-subdir",
+            subject_slash_timepoint,
+            task_display_name="Make CSV",
+            task_id=rano_task_ids.MAKE_CSV,
+        )
+        convert_to_nifti_stage = ContainerOperatorFactory.get_operator(
+            "convert_nifti",
+            "--subject-subdir",
+            subject_slash_timepoint,
+            task_display_name="Convert to NIfTI",
+            task_id=rano_task_ids.CONVERT_NIFTI,
+            outlets=[outlet_dataset],
+        )
 
-        prev_task = None
-        for stage in AUTO_STAGES:
-            curr_task = ContainerOperatorFactory.get_operator(stage)
-            if prev_task is not None:
-                prev_task >> curr_task
-            prev_task = curr_task
+        make_csv_stage >> convert_to_nifti_stage

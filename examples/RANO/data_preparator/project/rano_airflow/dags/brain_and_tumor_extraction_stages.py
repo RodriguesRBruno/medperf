@@ -11,7 +11,6 @@ from airflow.models.dag import DAG
 
 from utils.utils import YESTERDAY
 from utils.container_factory import ContainerOperatorFactory
-from utils.rano_stage import RANOStage
 from utils import rano_task_ids, dag_ids, dag_tags
 from utils.subject_datasets import (
     SUBJECT_TIMEPOINT_LIST,
@@ -36,38 +35,35 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
         tags=[subject_slash_timepoint, dag_tags.TUMOR_EXTRACTION],
     ) as dag:
 
-        AUTO_STAGES = [
-            RANOStage(
-                "extract_brain",
-                "--subject-subdir",
-                subject_slash_timepoint,
-                task_display_name="Extract Brain",
-                task_id=rano_task_ids.EXTRACT_BRAIN,
-            ),
-            RANOStage(
-                "extract_tumor",
-                "--subject-subdir",
-                subject_slash_timepoint,
-                task_display_name="Extract Tumor",
-                task_id=rano_task_ids.EXTRACT_TUMOR,
-                retries=1000,
-                retry_delay=timedelta(minutes=15),
-                retry_exponential_backoff=True,
-                max_retry_delay=timedelta(hours=1),
-            ),
-            RANOStage(
-                "prepare_for_manual_review",
-                "--subject-subdir",
-                subject_slash_timepoint,
-                task_display_name="Prepare for Manual Review",
-                task_id=rano_task_ids.PREPARE_FOR_MANUAL_REVIEW,
-                outlets=[outlet_dataset],
-            ),
-        ]
+        brain_extraction_stage = ContainerOperatorFactory.get_operator(
+            "extract_brain",
+            "--subject-subdir",
+            subject_slash_timepoint,
+            task_display_name="Extract Brain",
+            task_id=rano_task_ids.EXTRACT_BRAIN,
+        )
+        tumor_extraction_stage = ContainerOperatorFactory.get_operator(
+            "extract_tumor",
+            "--subject-subdir",
+            subject_slash_timepoint,
+            task_display_name="Extract Tumor",
+            task_id=rano_task_ids.EXTRACT_TUMOR,
+            retries=1000,
+            retry_delay=timedelta(minutes=15),
+            retry_exponential_backoff=True,
+            max_retry_delay=timedelta(hours=1),
+        )
+        prepare_for_manual_review_stage = ContainerOperatorFactory.get_operator(
+            "prepare_for_manual_review",
+            "--subject-subdir",
+            subject_slash_timepoint,
+            task_display_name="Prepare for Manual Review",
+            task_id=rano_task_ids.PREPARE_FOR_MANUAL_REVIEW,
+            outlets=[outlet_dataset],
+        )
 
-        prev_task = None
-        for stage in AUTO_STAGES:
-            curr_task = ContainerOperatorFactory.get_operator(stage)
-            if prev_task is not None:
-                prev_task >> curr_task
-            prev_task = curr_task
+        (
+            brain_extraction_stage
+            >> tumor_extraction_stage
+            >> prepare_for_manual_review_stage
+        )

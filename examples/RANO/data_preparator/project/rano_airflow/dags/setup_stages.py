@@ -11,7 +11,6 @@ from __future__ import annotations
 from airflow.models.dag import DAG
 from utils.utils import YESTERDAY
 from utils.container_factory import ContainerOperatorFactory
-from utils.rano_stage import RANOStage
 from utils import rano_task_ids, dag_ids, dag_tags
 from utils.subject_datasets import REPORT_DATASET
 
@@ -29,10 +28,8 @@ with DAG(
 ) as dag:
 
     report = ContainerOperatorFactory.get_operator(
-        RANOStage(
-            command="create_report",
-            task_display_name="Create Report Stage",
-            task_id=rano_task_ids.CREATE_REPORT,
-            outlets=[REPORT_DATASET],
-        )
+        "create_report",
+        task_display_name="Create Report Stage",
+        task_id=rano_task_ids.CREATE_REPORT,
+        outlets=[REPORT_DATASET],
     )
