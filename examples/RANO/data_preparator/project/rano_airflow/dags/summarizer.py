@@ -63,11 +63,30 @@ with DAG(
                 ),
             )
         }
+        setup_dag = all_dags[dag_ids.SETUP]
+        last_setup_dag_run: DagRun = setup_dag.get_last_dagrun(
+            include_externally_triggered=True
+        )
 
-        most_recent_dag_runs: dict[str, DagRun] = {
-            dag_id: dag.get_last_dagrun(include_externally_triggered=True)
-            for dag_id, dag in all_dags.items()
-        }
+        if last_setup_dag_run is None:
+            most_recent_dag_runs: dict[str, DagRun | None] = {
+                dag_id: None for dag_id in all_dags.keys()
+            }
+        else:
+            most_recent_dag_runs: dict[str, DagRun | None] = {
+                dag_id: dag.get_last_dagrun(include_externally_triggered=True)
+                for dag_id, dag in all_dags.items()
+            }
+            # Filter older runs from before last setup
+            most_recent_dag_runs = {
+                dag_id: (
+                    dag_run
+                    if dag_run is None
+                    or dag_run.execution_date >= last_setup_dag_run.execution_date
+                    else None
+                )
+                for dag_id, dag_run in most_recent_dag_runs.items()
+            }
 
         progress_df = pd.DataFrame(
             {
