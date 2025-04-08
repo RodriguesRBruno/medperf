@@ -5,6 +5,7 @@ from typing import Literal, Any
 
 YESTERDAY = datetime.today() - timedelta(days=1)
 
+HOST_WORKSPACE_DIR = os.getenv("WORKSPACE_DIRECTORY")
 AIRFLOW_DATA_DIR = os.getenv("AIRFLOW_DATA_DIR")
 INPUT_DATA_DIR = os.getenv("AIRFLOW_INPUT_DATA_DIR")
 
@@ -83,8 +84,7 @@ def get_manual_review_directory(
         )
 
     if include_host_path:
-        # TODO proper way to get whole path in there
-        BASE_DIR = os.path.join("/path/to/workspace", AIRFLOW_DATA_DIR[1:])
+        BASE_DIR = os.path.join(HOST_WORKSPACE_DIR, AIRFLOW_DATA_DIR[1:])
     else:
         BASE_DIR = AIRFLOW_DATA_DIR
 
