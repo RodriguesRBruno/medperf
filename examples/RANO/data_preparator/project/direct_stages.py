@@ -18,9 +18,12 @@ from stages.mlcube_constants import (
     MANUAL_STAGE_STATUS,
     MANUAL_REVIEW_PATH,
     LABELS_PATH,
+    METADATA_PATH,
 )
 from stages.constants import INTERIM_FOLDER
 from stages.utils import write_report
+from sanity_check import sanity_check
+from metrics import calculate_statistics
 
 app = typer.Typer()
 
@@ -81,7 +84,7 @@ def convert_nifti(
 
     csv_path = get_data_csv_filepath(subject_subdir)
     output_path = os.path.join(DATA_DIR, PREP_PATH, subject_subdir)
-    metadata_path = os.path.join(WORKSPACE_DIR, "metadata")
+    metadata_path = os.path.join(WORKSPACE_DIR, METADATA_PATH)
     os.makedirs(output_path, exist_ok=True)
     os.makedirs(metadata_path, exist_ok=True)
 
@@ -293,6 +296,21 @@ def consolidation_stage(keep_files: bool = typer.Option(False, "--keep-files")):
         base_finalized_dir=base_finalized_dir,
     )
     split.execute()
+
+
+@app.command("sanity_check")
+def sanity_check_cmdline():
+    data_path = DATA_DIR
+    labels_path = os.path.join(WORKSPACE_DIR, LABELS_PATH)
+    sanity_check(data_path=data_path, labels_path=labels_path)
+
+
+@app.command("metrics")
+def metrics_cmdline():
+    splits_path = os.path.join(DATA_DIR, "splits.csv")
+    invalid_path = os.path.join(WORKSPACE_DIR, METADATA_PATH, ".invalid.txt")
+    out_file = os.path.join(WORKSPACE_DIR, METADATA_PATH, "statistics.yml")
+    calculate_statistics(splits_path, invalid_path, out_file)
 
 
 if __name__ == "__main__":

@@ -75,9 +75,25 @@ with DAG(
         )
     )
 
+    sanity_check = ContainerOperatorFactory.get_operator(
+        RANOStage(
+            "sanity_check",
+            task_display_name="Sanity Check",
+            task_id=rano_task_ids.SANITY_CHECK,
+        )
+    )
+    metrics = ContainerOperatorFactory.get_operator(
+        RANOStage(
+            "metrics",
+            task_display_name="Evaluate Metrics",
+            task_id=rano_task_ids.METRICS,
+        )
+    )
     (
         calculate_changed_voxels
         >> manual_confirmation()
         >> move_labeled_files
         >> consolidation
+        >> sanity_check
+        >> metrics
     )

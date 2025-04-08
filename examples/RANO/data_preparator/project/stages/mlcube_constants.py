@@ -11,6 +11,7 @@ TRASH_PATH = ".trash"
 INVALID_FILE = ".invalid.txt"
 REPORT_FILE = "report.yaml"
 BRAIN_MASK_FILE = "brainMask_fused.nii.gz"
+METADATA_PATH = "metadata"
 
 # Directories used for the Manual Approval steps
 MANUAL_REVIEW_PATH = "manual_review"
