@@ -5,15 +5,16 @@ from typing import Literal, Any
 
 YESTERDAY = datetime.today() - timedelta(days=1)
 
-HOST_WORKSPACE_DIR = os.getenv("WORKSPACE_DIRECTORY")
+HOST_WORKSPACE_DIR = os.getenv("HOST_WORKSPACE_DIRECTORY")
+AIRFLOW_WORKSPACE_DIR = os.getenv("AIRFLOW_WORKSPACE_DIR")
 AIRFLOW_DATA_DIR = os.getenv("AIRFLOW_DATA_DIR")
-INPUT_DATA_DIR = os.getenv("AIRFLOW_INPUT_DATA_DIR")
+AIRFLOW_INPUT_DATA_DIR = os.getenv("AIRFLOW_INPUT_DATA_DIR")
 
 
 class ReportSummary:
 
     _REPORT_SUMMARY_FAILE = os.path.join(
-        AIRFLOW_DATA_DIR, "report_summary.yaml"
+        AIRFLOW_WORKSPACE_DIR, "report_summary.yaml"
     )  # TODO maybe use Workspace dir?
 
     def __init__(
@@ -56,8 +57,8 @@ def read_subject_directories():
 
     subject_slash_timepoint_list = []
 
-    for subject_id_dir in os.listdir(INPUT_DATA_DIR):
-        subject_complete_dir = os.path.join(INPUT_DATA_DIR, subject_id_dir)
+    for subject_id_dir in os.listdir(AIRFLOW_INPUT_DATA_DIR):
+        subject_complete_dir = os.path.join(AIRFLOW_INPUT_DATA_DIR, subject_id_dir)
 
         for timepoint_dir in os.listdir(subject_complete_dir):
             subject_slash_timepoint_list.append(

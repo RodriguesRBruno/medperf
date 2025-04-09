@@ -22,10 +22,13 @@ x-airflow-common:
     # yamllint enable rule:line-length
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
-    WORKSPACE_DIRECTORY: ${WORKSPACE_DIRECTORY}
+    HOST_WORKSPACE_DIRECTORY: ${WORKSPACE_DIRECTORY}
+    HOST_DATA_DIRECTORY: ${DATA_DIR}
+    HOST_INPUT_DATA_DIRECTORY: ${INPUT_DATA_DIR}
     RANO_DOCKER_IMAGE_NAME: ${RANO_DOCKER_IMAGE_NAME}
     AIRFLOW_INPUT_DATA_DIR: /input_data
     AIRFLOW_DATA_DIR: /data
+    AIRFLOW_WORKSPACE_DIR: /workspace
     AIRFLOW_CONN_LOCAL_FS: 'file://'
     CONTAINER_TYPE: ${CONTAINER_TYPE}
     PYTHONPATH: /opt/airflow/dags/:${PYTHONPATH}
@@ -38,6 +41,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${INPUT_DATA_DIR}:/input_data
     - ${DATA_DIR}:/data
+    - ${WORKSPACE_DIRECTORY}:/workspace
     - /var/run/docker.sock:/var/run/docker.sock:rw
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
