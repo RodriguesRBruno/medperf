@@ -70,19 +70,27 @@ class _OperatorFactory(ABC):
         return self._mount_returner(host_dir, container_dir)
 
     def get_operator(self, *commands: str, **kwargs):
-        workspace_host_dir = os.getenv("WORKSPACE_DIRECTORY")
-
+        workspace_host_dir = os.getenv("HOST_WORKSPACE_DIRECTORY")
+        data_host_dir = os.getenv("HOST_DATA_DIRECTORY")
+        input_data_host_dir = os.getenv("HOST_INPUT_DATA_DIRECTORY")
         mounts = [
             self._mount_helper(
                 host_dirs=[workspace_host_dir], container_dirs=["/", "workspace"]
-            )
+            ),
+            self._mount_helper(
+                host_dirs=[data_host_dir], container_dirs=["/", "workspace", "data"]
+            ),
+            self._mount_helper(
+                host_dirs=[input_data_host_dir],
+                container_dirs=["/", "workspace", "input_data"],
+            ),
         ]
 
         # Uncomment to mount project directory into the DockerOperator images. Used for development and debugging.
-        project_dir = os.getenv("PROJECT_DIRECTORY")
-        mounts.append(
-            self._mount_helper(host_dirs=[project_dir], container_dirs=["/", "project"])
-        )
+        # project_dir = os.getenv("PROJECT_DIRECTORY")
+        # mounts.append(
+        #     self._mount_helper(host_dirs=[project_dir], container_dirs=["/", "project"])
+        # )
 
         return self._operator_constructor(*commands, mounts=mounts, **kwargs)
 
