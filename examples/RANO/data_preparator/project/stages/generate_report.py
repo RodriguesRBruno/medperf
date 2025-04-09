@@ -8,7 +8,6 @@ from typing import Tuple
 from .utils import has_prepared_folder_structure, md5_dir, get_data_csv_filepath
 from .constants import INTERIM_FOLDER, FINAL_FOLDER, TUMOR_MASK_FOLDER
 from .mlcube_constants import REPORT_STAGE_STATUS, FINALIZED_PATH
-from .env_vars import REPORT_LOCK
 
 DICOM_MODALITIES_PREFIX = {
     "fl": "t2_Flair",
@@ -324,11 +323,6 @@ class GenerateReport(DatasetStage):
         return True
 
     def execute(self, report: pd.DataFrame) -> Tuple[pd.DataFrame, bool]:
-
-        try:
-            shutil.rmtree(REPORT_LOCK)
-        except OSError:
-            pass
         # Rewrite the report
         cols = [
             "status",
