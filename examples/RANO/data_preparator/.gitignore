@@ -5,7 +5,7 @@
 *.mat
 *.dcm
 *.png
-**/mlcube/workspace/*
+**/mlcube/workspace*/*
 !requirements.txt
 !*/mlcube/workspace/parameters.yaml
 models
@@ -13,3 +13,8 @@ tmpmodel
 **/dagster_home*/*
 !**/dagster_home/dagster.yaml
 !**/dagster_home/workspace.yaml
+**/data_prep_models/
+**/constants.py
+**/CreateCSVForDICOMs.py
+**/figure_generator_wrapper.py
+**/PrepareDataset.py
