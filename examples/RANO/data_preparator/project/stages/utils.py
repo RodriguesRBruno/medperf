@@ -269,8 +269,9 @@ def get_data_csv_filepath(subject_subdir):
 
 
 def find_finalized_subjects():
-    base_finalized_dir = os.path.join(DATA_DIR, MANUAL_REVIEW_PATH)
-    final_finalized_dir = os.path.join(TUMOR_EXTRACTION_REVIEW_PATH, FINALIZED_PATH)
+    base_finalized_dir = os.path.join(
+        DATA_DIR, MANUAL_REVIEW_PATH, TUMOR_EXTRACTION_REVIEW_PATH
+    )
     subject_and_timepoint_list = []
 
     candidate_subjects = get_subdirectories(base_finalized_dir)
@@ -280,7 +281,7 @@ def find_finalized_subjects():
 
         for timepoint in timepoint_dirs:
             timepoint_complete_path = os.path.join(subject_path, timepoint)
-            finalized_path = os.path.join(timepoint_complete_path, final_finalized_dir)
+            finalized_path = os.path.join(timepoint_complete_path, FINALIZED_PATH)
             try:
                 path_exists = os.path.exists(finalized_path)
                 path_is_dir = os.path.isdir(finalized_path)
@@ -298,7 +299,11 @@ def find_finalized_subjects():
 
 def get_manual_approval_base_path(subject_id, timepoint, approval_type):
     manual_approval_base_path = os.path.join(
-        DATA_DIR, MANUAL_REVIEW_PATH, subject_id, timepoint, approval_type
+        DATA_DIR,
+        MANUAL_REVIEW_PATH,
+        approval_type,
+        subject_id,
+        timepoint,
     )
     return manual_approval_base_path
 

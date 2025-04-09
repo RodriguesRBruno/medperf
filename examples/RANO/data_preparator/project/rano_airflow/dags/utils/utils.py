@@ -91,10 +91,11 @@ def get_manual_review_directory(
     BASE_REVIEW_DIR = os.path.join(
         BASE_DIR,
         "manual_review",
+        review_type,
         subject_slash_timepoint,
     )
 
-    final_path = os.path.join(BASE_REVIEW_DIR, review_type, review_state, FILE_NAME)
+    final_path = os.path.join(BASE_REVIEW_DIR, review_state, FILE_NAME)
     return final_path
 
 

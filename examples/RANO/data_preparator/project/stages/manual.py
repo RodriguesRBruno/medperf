@@ -24,6 +24,8 @@ from .utils import (
     load_report,
     get_aux_files_dir,
     get_manual_approval_finalized_path,
+    get_manual_approval_base_path,
+    delete_empty_directory,
 )
 
 
@@ -158,9 +160,21 @@ class ManualStage(RowStage):
         shutil.move(brain_mask_path, rollback_brain_mask_path)
 
         # Remove the complete subject path
-        subject_path = os.path.abspath(os.path.join(tumor_masks_path, ".."))
+        subject_path = os.path.abspath(
+            os.path.join(tumor_masks_path, "..", "..", "..", "..")
+        )
 
         shutil.rmtree(subject_path)
+
+        # Also remove the manual review directory for this subject/timepoint
+        id, tp = get_id_tp(index)
+        for approval_type in [TUMOR_EXTRACTION_REVIEW_PATH, BRAIN_MASK_REVIEW_PATH]:
+            manual_review_path = get_manual_approval_base_path(id, tp, approval_type)
+            shutil.rmtree(manual_review_path)
+            subject_review_path = os.path.abspath(
+                os.path.join(manual_review_path, "..")
+            )
+            delete_empty_directory(subject_review_path)
 
     def __report_rollback(
         self, index: Union[str, int], report: pd.DataFrame, mask_hash
