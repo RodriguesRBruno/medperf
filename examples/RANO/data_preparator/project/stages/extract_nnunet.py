@@ -153,8 +153,12 @@ class ExtractNnUNet(Extract):
             raise RuntimeError("No tumor segmentation was found")
 
         pred_filepath = os.path.join(tmp_out_path, pred)
+        pred_dir = os.path.dirname(pred_filepath)
+        os.makedirs(pred_dir, exist_ok=True)
         shutil.move(pred_filepath, out_pred_filepath)
         for copy_path in copy_paths:
+            copy_dir = os.path.dirname(copy_path)
+            os.makedirs(copy_dir, exist_ok=True)
             shutil.copy(out_pred_filepath, copy_path)
         return out_pred_filepath
 
@@ -184,14 +188,7 @@ class ExtractNnUNet(Extract):
             under_review_brain_mask_path, BRAIN_MASK_FILE
         )
 
-        for path_to_create in [
-            out_pred_path,
-            finalized_tumor_path,
-            under_review_tumor_path,
-            finalized_brain_mask_path,
-            under_review_brain_mask_path,
-        ]:
-            os.makedirs(path_to_create, exist_ok=True)
+        os.makedirs(out_pred_path, exist_ok=True)
 
         for i, model in enumerate(models):
             order = self.__get_mod_order(model)
@@ -228,4 +225,8 @@ class ExtractNnUNet(Extract):
                 ),
                 output,
             )
+
+        os.makedirs(under_review_brain_mask_path, exist_ok=True)
         shutil.copy(brain_mask_filepath, brain_mask_review_filepath)
+        os.makedirs(finalized_brain_mask_path, exist_ok=True)
+        os.makedirs(finalized_tumor_path, exist_ok=True)
