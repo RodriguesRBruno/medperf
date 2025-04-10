@@ -22,7 +22,7 @@ with DAG(
     dag_display_name="Summarizer",
     catchup=True,
     max_active_runs=1,
-    schedule=timedelta(seconds=30),
+    schedule=timedelta(minutes=30),
     start_date=YESTERDAY,
     is_paused_upon_creation=False,
     doc_md="This DAG generates and periodically updates the report_summary.yaml file that is sent to the MedPerf servers.",
