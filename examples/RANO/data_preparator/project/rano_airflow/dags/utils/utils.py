@@ -5,7 +5,7 @@ from typing import Literal, Any
 
 YESTERDAY = datetime.today() - timedelta(days=1)
 
-HOST_WORKSPACE_DIR = os.getenv("HOST_WORKSPACE_DIRECTORY")
+HOST_DATA_DIR = os.getenv("HOST_DATA_DIRECTORY")
 AIRFLOW_WORKSPACE_DIR = os.getenv("AIRFLOW_WORKSPACE_DIR")
 AIRFLOW_DATA_DIR = os.getenv("AIRFLOW_DATA_DIR")
 AIRFLOW_INPUT_DATA_DIR = os.getenv("AIRFLOW_INPUT_DATA_DIR")
@@ -85,7 +85,7 @@ def get_manual_review_directory(
         )
 
     if include_host_path:
-        BASE_DIR = os.path.join(HOST_WORKSPACE_DIR, AIRFLOW_DATA_DIR[1:])
+        BASE_DIR = os.path.join(HOST_DATA_DIR)
     else:
         BASE_DIR = AIRFLOW_DATA_DIR
 
