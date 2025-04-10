@@ -6,5 +6,5 @@ cd Front-End
 git submodule update --init
 docker build --target=fets_base -t local/fets_tool .
 cd ../../
-docker build -t local/rano-data-prep-mlcube:1.0.11 .  # TODO change back do mlcommons/ once finished
+docker build -t local/rano-data-prep-mlcube:1.0.13 .  # TODO change back do mlcommons/ once finished
 rm -rf tmp
