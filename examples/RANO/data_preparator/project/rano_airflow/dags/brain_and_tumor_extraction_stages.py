@@ -17,7 +17,7 @@ from utils.subject_datasets import (
     SUBJECT_NIFTI_DATASETS,
     SUBJECT_TUMOR_EXTRACT_DATASETS,
 )
-from datetime import timedelta
+from utils.pools import EXTRACTION_POOL
 
 
 for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
@@ -41,6 +41,7 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
             subject_slash_timepoint,
             task_display_name="Extract Brain",
             task_id=rano_task_ids.EXTRACT_BRAIN,
+            pool=EXTRACTION_POOL.pool,
         )
         tumor_extraction_stage = ContainerOperatorFactory.get_operator(
             "extract_tumor",
@@ -48,10 +49,7 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
             subject_slash_timepoint,
             task_display_name="Extract Tumor",
             task_id=rano_task_ids.EXTRACT_TUMOR,
-            retries=1000,
-            retry_delay=timedelta(minutes=15),
-            retry_exponential_backoff=True,
-            max_retry_delay=timedelta(hours=1),
+            pool=EXTRACTION_POOL.pool,
         )
         prepare_for_manual_review_stage = ContainerOperatorFactory.get_operator(
             "prepare_for_manual_review",

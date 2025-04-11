@@ -32,6 +32,8 @@ x-airflow-common:
     AIRFLOW_CONN_LOCAL_FS: 'file://'
     CONTAINER_TYPE: ${CONTAINER_TYPE}
     PYTHONPATH: /opt/airflow/dags/:${PYTHONPATH}
+    EXTRACTION_POOL_SLOTS: ${EXTRACTION_POOL_SLOTS}
+    NIFTI_POOL_SLOTS: ${NIFTI_POOL_SLOTS}
     # Uncomment this and set PROJECT_DIRECTORY in the .env file to mount code files into Airflow. Used for development and debugging.
     # PROJECT_DIRECTORY: ${PROJECT_DIRECTORY}
   volumes:

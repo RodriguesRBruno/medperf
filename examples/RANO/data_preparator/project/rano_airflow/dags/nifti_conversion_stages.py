@@ -15,6 +15,7 @@ from utils.subject_datasets import (
     SUBJECT_TIMEPOINT_LIST,
     SUBJECT_NIFTI_DATASETS,
 )
+from utils.pools import NIFTI_POOL
 
 
 for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
@@ -46,6 +47,7 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
             task_display_name="Convert to NIfTI",
             task_id=rano_task_ids.CONVERT_NIFTI,
             outlets=[outlet_dataset],
+            pool=NIFTI_POOL.pool,
         )
 
         make_csv_stage >> convert_to_nifti_stage
