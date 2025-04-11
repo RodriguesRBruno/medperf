@@ -5,7 +5,7 @@ from airflow.datasets import Dataset
 
 SUBJECT_TIMEPOINT_LIST = read_subject_directories()
 
-REPORT_DATASET = Dataset("report")
+SETUP_DATASET = Dataset("setup")
 SUBJECT_NIFTI_DATASETS = {
     subject_slash_timepoint: Dataset(f"nifti/{subject_slash_timepoint}")
     for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST

@@ -9,10 +9,10 @@ from pandas import DataFrame
 from .dset_stage import DatasetStage
 from .utils import (
     get_id_tp,
-    load_report,
-    find_finalized_subjects,
-    write_report,
+    get_subdirectories,
     get_manual_approval_finalized_path,
+    get_changed_voxels_file,
+    find_finalized_subjects,
 )
 from .constants import FINAL_FOLDER
 from .mlcube_constants import (
@@ -46,26 +46,22 @@ class ConfirmStage(DatasetStage):
     def status_code(self):
         return CONFIRM_STAGE_STATUS
 
-    def __get_input_data_path(self, index: Union[str, int]):
-        id, tp = get_id_tp(index)
+    def __get_input_data_path(self, id, tp):
         path = os.path.join(self.prev_stage_path, id, tp, FINAL_FOLDER, id, tp)
         return path
 
-    def __get_input_label_path(self, index: Union[str, int]):
-        id, tp = get_id_tp(index)
+    def __get_input_label_path(self, id, tp):
         path = get_manual_approval_finalized_path(id, tp, TUMOR_EXTRACTION_REVIEW_PATH)
 
         case = os.listdir(path)[0]
 
         return os.path.join(path, case)
 
-    def __get_output_data_path(self, index: Union[str, int]):
-        id, tp = get_id_tp(index)
+    def __get_output_data_path(self, id, tp):
         path = os.path.join(self.out_data_path, id, tp)
         return path
 
-    def __get_output_label_path(self, index: Union[str, int]):
-        id, tp = get_id_tp(index)
+    def __get_output_label_path(self, id, tp):
         path = os.path.join(self.out_labels_path, id, tp)
         filename = f"{id}_{tp}_final_seg.nii.gz"
         return path, filename
@@ -102,7 +98,7 @@ class ConfirmStage(DatasetStage):
         # Because of this, failing this stage keeps the report intact
         return report
 
-    def __process_row(self, row: pd.Series) -> pd.Series:
+    def __process_row(self, subject_dict) -> pd.Series:
         """process a row by moving the required files
         to their respective locations, and removing any extra files
 
@@ -112,22 +108,19 @@ class ConfirmStage(DatasetStage):
         Returns:
             DataFrame: modified data preparation report
         """
-        index = row.name
-        input_data_path = self.__get_input_data_path(index)
-        input_label_filepath = self.__get_input_label_path(index)
-        output_data_path = self.__get_output_data_path(index)
-        output_label_path, filename = self.__get_output_label_path(index)
+        subject_id, timepoint = subject_dict["SubjectID"], subject_dict["Timepoint"]
+        input_data_path = self.__get_input_data_path(subject_id, timepoint)
+        input_label_filepath = self.__get_input_label_path(subject_id, timepoint)
+        output_data_path = self.__get_output_data_path(subject_id, timepoint)
+        output_label_path, filename = self.__get_output_label_path(
+            subject_id, timepoint
+        )
         output_label_filepath = os.path.join(output_label_path, filename)
 
         shutil.rmtree(output_data_path, ignore_errors=True)
         shutil.copytree(input_data_path, output_data_path)
         os.makedirs(output_label_path, exist_ok=True)
         shutil.copy(input_label_filepath, output_label_filepath)
-
-        row["status"] = self.status_code
-        row["data_path"] = output_data_path
-        row["labels_path"] = output_label_path
-        return row
 
     def could_run(self, report: DataFrame) -> bool:
         print(f"Checking if {self.name} can run")
@@ -143,21 +136,33 @@ class ConfirmStage(DatasetStage):
         )
         return prev_path_exists and not empty_prev_path and not missing_voxels
 
-    def execute(self, report: DataFrame = None) -> Tuple[DataFrame, bool]:
-        if report is None:
-            report = load_report()
+    @staticmethod
+    def calculate_exact_match_percent():
+        """
+        This value is equal to the sum of all subjects where no voxels were
+        changed in the Tumor Segmentation divided by the total number of subjects.
+        """
+        base_aux_dir = os.path.join(DATA_DIR, AUX_FILES_PATH)
+        num_subjects = 0
+        num_unchanged_subjects = 0
 
-        # Keep only valid subjects in report
-        subject_timepoint_list = find_finalized_subjects()
+        for subject_id in get_subdirectories(base_aux_dir):
+            complete_subject_path = os.path.join(base_aux_dir, subject_id)
+            for timepoint in get_subdirectories(complete_subject_path):
+                changed_voxels_file = get_changed_voxels_file(subject_id, timepoint)
+                if not os.path.isfile(changed_voxels_file):
+                    continue
+                num_subjects += 1
+                with open(changed_voxels_file, "r") as f:
+                    changed_voxels = int(f.read())
 
-        valid_subjects = [
-            "|".join([item["SubjectID"], item["Timepoint"]])
-            for item in subject_timepoint_list
-        ]
+                if not changed_voxels:
+                    num_unchanged_subjects += 1
 
-        report = report[report.index.isin(valid_subjects)]
+        return num_subjects / num_unchanged_subjects
 
-        exact_match_percent = (report["num_changed_voxels"] == 0).sum() / len(report)
+    def execute(self) -> Tuple[DataFrame, bool]:
+        exact_match_percent = self.calculate_exact_match_percent()
 
         rounded_percent = round(exact_match_percent * 100, 2)
         msg_file = os.path.join(DATA_DIR, AUX_FILES_PATH, ".msg")
@@ -167,7 +172,7 @@ class ConfirmStage(DatasetStage):
         return
 
     def move_labels(self):
-        report = load_report()
-        report = report.apply(self.__process_row, axis=1)
-        write_report(report)
-        return report, True
+        finalized_subjects = find_finalized_subjects()
+        for finalized_subject in finalized_subjects:
+            self.__process_row(finalized_subject)
+        return True

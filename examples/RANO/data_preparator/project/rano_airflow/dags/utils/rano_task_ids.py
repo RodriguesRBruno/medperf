@@ -1,4 +1,4 @@
-CREATE_REPORT = "create_report"
+INITIAL_SETUP = "initial_setup"
 MAKE_CSV = "make_csv"
 CONVERT_NIFTI = "convert_nifti"
 EXTRACT_BRAIN = "extract_brain"

@@ -12,6 +12,7 @@ INVALID_FILE = ".invalid.txt"
 REPORT_FILE = "report.yaml"
 BRAIN_MASK_FILE = "brainMask_fused.nii.gz"
 METADATA_PATH = "metadata"
+CHANGED_VOXELS_FILE = ".changed_voxels.txt"
 
 # Directories used for the Manual Approval steps
 MANUAL_REVIEW_PATH = "manual_review"
@@ -26,7 +27,7 @@ GROUND_TRUTH_PATH = ".ground_truth"
 # JSON file (just true/false) for evaluating brain mask changes
 BRAIN_MASK_CHANGED_FILE = "brain_mask_changed.json"
 
-REPORT_STAGE_STATUS = 0
+SETUP_STAGE_STATUS = 0
 CSV_STAGE_STATUS = 1
 NIFTI_STAGE_STATUS = 2
 BRAIN_STAGE_STATUS = 3

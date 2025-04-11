@@ -17,12 +17,8 @@ from .mlcube_constants import (
 )
 from .utils import (
     get_id_tp,
-    update_row_with_dict,
     set_files_read_only,
     copy_files,
-    md5_file,
-    load_report,
-    get_aux_files_dir,
     get_manual_approval_finalized_path,
     get_manual_approval_base_path,
     delete_empty_directory,
@@ -62,14 +58,6 @@ class ManualStage(RowStage):
         brain_mask_path = os.path.join(brain_mask_dir, BRAIN_MASK_FILE)
         return tumor_mask_path, brain_mask_path
 
-    def __get_brain_mask_changed_filepath(self, index: Union[str, int]):
-        id, tp = get_id_tp(index)
-        path = os.path.join(
-            get_aux_files_dir(os.path.join(id, tp)),
-            BRAIN_MASK_CHANGED_FILE,
-        )
-        return path
-
     def __get_output_path(self, index: Union[str, int]):
         id, tp = get_id_tp(index)
         path = get_manual_approval_finalized_path(id, tp, TUMOR_EXTRACTION_REVIEW_PATH)
@@ -86,57 +74,6 @@ class ManualStage(RowStage):
         data_path = os.path.join(base_rollback_path, FINAL_FOLDER, id, tp)
         labels_path = os.path.join(base_rollback_path, INTERIM_FOLDER, id, tp)
         return data_path, labels_path
-
-    def __report_success(
-        self, index: Union[str, int], report: pd.DataFrame
-    ) -> pd.DataFrame:
-        if report is None:
-            return
-
-        labels_path = self.__get_output_path(index)
-        data_path = report.loc[index, "data_path"]
-        report_data = {
-            "status": 5,
-            "data_path": data_path,
-            "labels_path": labels_path,
-        }
-        update_row_with_dict(report, report_data, index)
-        return report
-
-    def __report_step_missing(
-        self, index: Union[str, int], report: pd.DataFrame
-    ) -> pd.DataFrame:
-        if report is None:
-            return
-
-        in_path, _ = self.__get_input_paths(index)
-        data_path = report.loc[index, "data_path"]
-
-        report_data = {
-            "status": -self.status_code,
-            "data_path": data_path,
-            "labels_path": in_path,
-        }
-        update_row_with_dict(report, report_data, index)
-        return report
-
-    def __report_multiple_cases_error(
-        self, index: Union[str, int], report: pd.DataFrame, cases: list
-    ) -> pd.DataFrame:
-        if report is None:
-            return
-        path = self.__get_output_path(index)
-        data_path = report.loc[index, "data_path"]
-
-        error_msg = f"Multiple files were identified in the labels path: {cases}. Please ensure that there is only the manually corrected segmentation file."
-        report_data = {
-            "status": -self.status_code - 0.1,  # -5.1
-            "data_path": data_path,
-            "labels_path": path,
-            "comment": error_msg,
-        }
-        update_row_with_dict(report, report_data, index)
-        return report
 
     def rollback(self, index):
         # Unhide the rollback paths
@@ -176,21 +113,20 @@ class ManualStage(RowStage):
             )
             delete_empty_directory(subject_review_path)
 
-    def __report_rollback(
-        self, index: Union[str, int], report: pd.DataFrame, mask_hash
-    ) -> pd.DataFrame:
-        rollback_fets_path, rollback_qc_path = self.__get_rollback_paths(index)
+    def prepare_directories(self, index: Union[str, int]) -> Tuple[str, str]:
+        # Generate a hidden copy of the baseline segmentations
+        in_path, brain_path = self.__get_input_paths(index)
+        out_path = self.__get_output_path(index)
+        bak_path = self.__get_backup_path(index)
+        print(f"{in_path=}")
+        print(f"{out_path=}")
+        print(f"{bak_path=}")
+        if not os.path.exists(bak_path) or not os.listdir(bak_path):
+            print("Entered if")
+            copy_files(in_path, bak_path)
+            set_files_read_only(bak_path)
 
-        report_data = {
-            "status": 2,  # Move back to nifti transform finished
-            "data_path": rollback_qc_path,
-            "labels_path": rollback_fets_path,
-            "brain_mask_hash": mask_hash,
-            "num_changed_voxels": 0.0,  # Ensure voxel count is reset
-            "segmentation_hash": "",
-        }
-        update_row_with_dict(report, report_data, index)
-        return report
+        return out_path, brain_path
 
     def could_run(self, index: Union[str, int], report: pd.DataFrame) -> bool:
         print(f"Checking if {self.name} can run")
@@ -212,51 +148,6 @@ class ManualStage(RowStage):
             f"{segmentation_exists=} and (not {annotation_exists=} or {brain_mask_changed=})"
         )
         return segmentation_exists and (not annotation_exists or brain_mask_changed)
-
-    def prepare_directories(self, index: Union[str, int]) -> Tuple[str, str]:
-        # Generate a hidden copy of the baseline segmentations
-        in_path, brain_path = self.__get_input_paths(index)
-        out_path = self.__get_output_path(index)
-        bak_path = self.__get_backup_path(index)
-        print(f"{in_path=}")
-        print(f"{out_path=}")
-        print(f"{bak_path=}")
-        if not os.path.exists(bak_path) or not os.listdir(bak_path):
-            print("Entered if")
-            copy_files(in_path, bak_path)
-            set_files_read_only(bak_path)
-
-        return out_path, brain_path
-
-    def check_brain_mask_changed(
-        self,
-        index: Union[str, int],
-        brain_path: str,
-        report: pd.DataFrame,
-    ) -> Tuple[bool, str]:
-        brain_mask_hash = ""
-        if os.path.exists(brain_path):
-            brain_mask_hash = md5_file(brain_path)
-
-        expected_brain_mask_hash = report.loc[index, "brain_mask_hash"]
-        brain_mask_changed = brain_mask_hash != expected_brain_mask_hash
-
-        brain_mask_changed_filepath = self.__get_brain_mask_changed_filepath(index)
-        with open(brain_mask_changed_filepath, "w") as f:
-            json.dump(brain_mask_changed, f)
-        return brain_mask_changed, brain_mask_hash
-
-    def check_finalized_cases(self, index: Union[str, int], report: pd.DataFrame):
-        out_path = self.__get_output_path(index)
-        cases = os.listdir(out_path)
-
-        if len(cases) > 1:
-            # Found more than one reviewed case
-            return self.__report_multiple_cases_error(index, report, cases), False
-        elif not len(cases):
-            # Found no cases yet reviewed
-            return self.__report_step_missing(index, report), False
-        return self.__report_success(index, report), True
 
     def execute(
         self, index: Union[str, int], report: pd.DataFrame = None

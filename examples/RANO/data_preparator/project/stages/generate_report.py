@@ -7,7 +7,7 @@ import shutil
 from typing import Tuple
 from .utils import has_prepared_folder_structure, md5_dir, get_data_csv_filepath
 from .constants import INTERIM_FOLDER, FINAL_FOLDER, TUMOR_MASK_FOLDER
-from .mlcube_constants import REPORT_STAGE_STATUS, FINALIZED_PATH
+from .mlcube_constants import SETUP_STAGE_STATUS, FINALIZED_PATH
 
 DICOM_MODALITIES_PREFIX = {
     "fl": "t2_Flair",
@@ -202,7 +202,7 @@ def write_partial_csv(csv_path, subject, timepoint):
     df.to_csv(csv_path, index=False)
 
 
-class GenerateReport(DatasetStage):
+class InitialSetup(DatasetStage):
     def __init__(
         self,
         data_csv: str,
@@ -231,11 +231,11 @@ class GenerateReport(DatasetStage):
 
     @property
     def name(self) -> str:
-        return "Generate Report"
+        return "Initial Setup"
 
     @property
     def status_code(self) -> int:
-        return REPORT_STAGE_STATUS
+        return SETUP_STAGE_STATUS
 
     def _proceed_to_comparison(self, subject, timepoint, in_subject_path, report):
         index = get_index(subject, timepoint)

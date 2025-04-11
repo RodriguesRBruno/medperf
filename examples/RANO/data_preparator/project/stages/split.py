@@ -68,17 +68,6 @@ class SplitStage(DatasetStage):
 
         return True
 
-    def __report_success(self, report: pd.DataFrame) -> pd.DataFrame:
-        from .utils import load_report, write_report
-
-        if report is None:
-            report = load_report()
-
-        report["status"] = self.status_code
-        write_report(report)
-
-        return report
-
     def consolidate_metadata(self):
         base_metadata_dir = os.path.join(WORKSPACE_DIR, METADATA_PATH)
         anon_dict = {}
@@ -129,7 +118,7 @@ class SplitStage(DatasetStage):
             complete_subdir_path = os.path.join(base_metadata_dir, subdir)
             delete_empty_directory(complete_subdir_path)
 
-    def execute(self, report: pd.DataFrame = None) -> pd.DataFrame:
+    def execute(self) -> pd.DataFrame:
         with open(self.params, "r") as f:
             params = yaml.safe_load(f)
 
@@ -160,7 +149,6 @@ class SplitStage(DatasetStage):
         split_df.loc[val_mask].to_csv(self.val_csv_path, index=False)
 
         self.consolidate_metadata()
-        report = self.__report_success(report)
         cleanup_storage(self.staging_folders)
 
-        return report, True
+        return True

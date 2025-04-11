@@ -3,7 +3,7 @@ import shutil
 import argparse
 import pandas as pd
 import yaml
-from stages.generate_report import GenerateReport
+from stages.generate_report import InitialSetup
 from stages.get_csv import AddToCSV
 from stages.nifti_transform import NIfTITransform
 from stages.extract import Extract
@@ -15,6 +15,7 @@ from stages.split import SplitStage
 from stages.pipeline import Pipeline
 from stages.mlcube_constants import *
 from stages.constants import INTERIM_FOLDER, FINAL_FOLDER, TUMOR_MASK_FOLDER
+
 
 def find_csv_filenames(path_to_dir, suffix=".csv"):
     filenames = os.listdir(path_to_dir)
@@ -54,7 +55,7 @@ def setup_argparser():
         "--metadata_path",
         dest="metadata_path",
         type=str,
-        help="path to the local metadata folder"
+        help="path to the local metadata folder",
     )
 
     return parser.parse_args()
@@ -82,7 +83,7 @@ def init_pipeline(args):
     invalid_subjects_file = os.path.join(args.metadata_path, INVALID_FILE)
 
     loop = None
-    report_gen = GenerateReport(
+    report_gen = InitialSetup(
         out_data_csv,
         args.data,
         out_raw,
@@ -93,10 +94,12 @@ def init_pipeline(args):
         brain_data_out,
         BRAIN_STAGE_STATUS,
         tumor_data_out,
-        MANUAL_STAGE_STATUS\
+        MANUAL_STAGE_STATUS,
     )
     csv_proc = AddToCSV(out_raw, out_data_csv, valid_data_out, out_raw)
-    nifti_proc = NIfTITransform(out_data_csv, nifti_data_out, valid_data_out, args.metadata_path, args.data_out)
+    nifti_proc = NIfTITransform(
+        out_data_csv, nifti_data_out, valid_data_out, args.metadata_path, args.data_out
+    )
     brain_extract_proc = Extract(
         out_data_csv,
         brain_data_out,
@@ -141,9 +144,12 @@ def init_pipeline(args):
         manual_proc,
         match_proc,
         confirm_proc,
-        split_proc
+        split_proc,
     ]
-    return Pipeline(report_gen, stages, staging_folders, [trash_folder], invalid_subjects_file)
+    return Pipeline(
+        report_gen, stages, staging_folders, [trash_folder], invalid_subjects_file
+    )
+
 
 def init_report(args) -> pd.DataFrame:
     report = None
@@ -177,6 +183,7 @@ def main():
 
     # cleanup tmp folder
     shutil.rmtree(tmpfolder, ignore_errors=True)
+
 
 if __name__ == "__main__":
     main()

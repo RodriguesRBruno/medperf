@@ -9,9 +9,8 @@ import nibabel as nib
 from .row_stage import RowStage
 from .utils import (
     get_id_tp,
-    update_row_with_dict,
+    get_changed_voxels_file,
     md5_file,
-    load_report,
     get_manual_approval_finalized_path,
 )
 from .constants import INTERIM_FOLDER
@@ -79,7 +78,7 @@ class SegmentationComparisonStage(RowStage):
             "labels_path": case_path,
             "segmentation_hash": reviewed_hash,
         }
-        update_row_with_dict(report, report_data, index)
+
         return report
 
     def __report_exact_match(
@@ -94,7 +93,7 @@ class SegmentationComparisonStage(RowStage):
             "num_changed_voxels": 0,
             "segmentation_hash": reviewed_hash,
         }
-        update_row_with_dict(report, report_data, index)
+
         return report
 
     def __report_success(
@@ -144,12 +143,9 @@ class SegmentationComparisonStage(RowStage):
 
         return is_valid
 
-    def execute(
-        self, index: Union[str, int], report: DataFrame = None
-    ) -> Tuple[DataFrame, bool]:
-        if report is None:
-            report = load_report(use_lock=True)
+    def execute(self, index: Union[str, int]) -> Tuple[DataFrame, bool]:
 
+        id, tp = get_id_tp(index)
         path = self.__get_input_path(index)
         cases = os.listdir(path)
         print(f"{path=}")
@@ -175,9 +171,8 @@ class SegmentationComparisonStage(RowStage):
 
         num_changed_voxels = np.sum(reviewed_voxels != gt_voxels)
         print(f"{num_changed_voxels=}")
-        if num_changed_voxels == 0:
-            report = self.__report_exact_match(index, report, reviewed_hash)
-            return report, True
+        changed_voxels_file = get_changed_voxels_file(id, tp)
+        with open(changed_voxels_file, "w") as f:
+            f.write(str(num_changed_voxels))
 
-        report = self.__report_success(index, report, num_changed_voxels, reviewed_hash)
-        return report, True
+        return True

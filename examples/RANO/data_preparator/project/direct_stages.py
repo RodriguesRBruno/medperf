@@ -2,7 +2,7 @@
 
 import typer
 import os
-from stages.env_vars import WORKSPACE_DIR, DATA_DIR, INPUT_DIR, REPORT_PATH
+from stages.env_vars import WORKSPACE_DIR, DATA_DIR, INPUT_DIR
 from stages.utils import get_aux_files_dir, get_data_csv_filepath, convert_path_to_index
 from stages.mlcube_constants import (
     RAW_PATH,
@@ -21,22 +21,21 @@ from stages.mlcube_constants import (
     METADATA_PATH,
 )
 from stages.constants import INTERIM_FOLDER
-from stages.utils import write_report
 from sanity_check import sanity_check
 from metrics import calculate_statistics
 
 app = typer.Typer()
 
 
-@app.command("create_report")
-def create_report():
-    from stages.generate_report import GenerateReport
+@app.command("initial_setup")
+def initial_setup():
+    from stages.generate_report import InitialSetup
 
     raw_dir = os.path.join(DATA_DIR, RAW_PATH)
     labels_out_dir = os.path.join(WORKSPACE_DIR, LABELS_PATH)
     brain_out = os.path.join(DATA_DIR, BRAIN_PATH)
     tumor_out = os.path.join(DATA_DIR, TUMOR_PATH)
-    report_generator = GenerateReport(
+    report_generator = InitialSetup(
         data_csv=None,
         input_path=INPUT_DIR,
         output_path=raw_dir,
@@ -49,8 +48,7 @@ def create_report():
         tumor_data_out_path=tumor_out,
         reviewed_status=MANUAL_STAGE_STATUS,
     )
-    report = report_generator.execute(None)
-    write_report(report, REPORT_PATH)
+    report_generator.execute(None)
 
 
 @app.command("make_csv")
@@ -137,7 +135,7 @@ def extract_tumor(
     os.makedirs(output_path, exist_ok=True)
 
     models_path = os.path.join(WORKSPACE_DIR, "additional_files", "models")
-    tmpfolder = os.path.join(WORKSPACE_DIR, ".tmp")
+    tmpfolder = os.path.join(WORKSPACE_DIR, ".tmp", subject_subdir)
     cbica_tmpfolder = os.path.join(tmpfolder, ".cbicaTemp")
     os.environ["TMPDIR"] = tmpfolder
     os.environ["CBICA_TEMP_DIR"] = cbica_tmpfolder

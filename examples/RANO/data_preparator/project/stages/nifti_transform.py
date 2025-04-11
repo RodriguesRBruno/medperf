@@ -6,8 +6,9 @@ import shutil
 
 from .row_stage import RowStage
 from .PrepareDataset import Preparator
-from .utils import update_row_with_dict, get_id_tp, unnormalize_path
+from .utils import get_id_tp
 from .mlcube_constants import NIFTI_STAGE_STATUS
+from .constants import FINAL_FOLDER, EXEC_NAME
 
 
 class NIfTITransform(RowStage):
@@ -25,7 +26,7 @@ class NIfTITransform(RowStage):
         self.prev_stage_path = prev_stage_path
         self.metadata_path = metadata_path
         os.makedirs(self.out_path, exist_ok=True)
-        self.prep = Preparator(data_csv, out_path, "BraTSPipeline")
+        self.prep = Preparator(data_csv, out_path, EXEC_NAME)
         # self.pbar = pbar
         self.pbar = tqdm()
 
@@ -57,7 +58,8 @@ class NIfTITransform(RowStage):
         return False
 
     def execute(
-        self, index: Union[str, int], report: pd.DataFrame = None
+        self,
+        index: Union[str, int],
     ) -> pd.DataFrame:
         """Executes the NIfTI transformation stage on the given case
 
@@ -71,11 +73,11 @@ class NIfTITransform(RowStage):
         self.__prepare_exec()
         self.__process_case(index)
         self.__cleanup_artifacts(index)
-        report, success = self.__update_report(index, report)
+        success = self.__validate_result(index)
         self.prep.write()
         self.__update_metadata(index)
 
-        return report, success
+        return success
 
     def __cleanup_artifacts(self, index):
         unused_artifacts_substrs = ["raw", "to_SRI", ".mat"]
@@ -106,22 +108,12 @@ class NIfTITransform(RowStage):
         row = df[(df["SubjectID"] == id) & (df["Timepoint"] == tp)].iloc[0]
         self.prep.convert_to_dicom(hash(index), row, self.pbar)
 
-    def __update_prev_stage_state(self, index: Union[str, int], report: pd.DataFrame):
-        prev_data_path = report.loc[index]["data_path"]
-        prev_data_path = unnormalize_path(prev_data_path, self.data_out)
-        shutil.rmtree(prev_data_path, ignore_errors=True)
-
     def __undo_current_stage_changes(self, index: Union[str, int]):
         fets_path, qc_path = self.__get_output_paths(index)
         shutil.rmtree(fets_path, ignore_errors=True)
         shutil.rmtree(qc_path, ignore_errors=True)
 
-    def __update_report(
-        self, index: Union[str, int], report: pd.DataFrame
-    ) -> pd.DataFrame:
-        if report is None:
-            return report, True
-
+    def __validate_result(self, index: Union[str, int]) -> pd.DataFrame:
         id, tp = get_id_tp(index)
         failing = self.prep.failing_subjects
         failing_subject = failing[
@@ -129,18 +121,15 @@ class NIfTITransform(RowStage):
         ]
         if len(failing_subject):
             self.__undo_current_stage_changes(index)
-            report = self.__report_failure(index, report)
-            success = False
+            self.__report_failure()
         else:
-            self.__update_prev_stage_state(index, report)
-            report = self.__report_success(index, report)
             success = True
 
-        return report, success
+        return success
 
     def __update_metadata(self, index):
         id, tp = get_id_tp(index)
-        fets_path = os.path.join(self.out_path, "DataForFeTS")
+        fets_path = os.path.join(self.out_path, FINAL_FOLDER)
         outfile_dir = os.path.join(self.metadata_path, id, tp)
         os.makedirs(outfile_dir, exist_ok=True)
         for file in os.listdir(fets_path):
@@ -149,31 +138,9 @@ class NIfTITransform(RowStage):
             if os.path.isfile(filepath) and filepath.endswith(".yaml"):
                 shutil.copyfile(filepath, out_filepath)
 
-    def __report_success(
-        self, index: Union[str, int], report: pd.DataFrame
-    ) -> pd.DataFrame:
-        fets_path, qc_path = self.__get_output_paths(index)
-        report_data = {
-            "status": self.status_code,
-            "data_path": qc_path,
-            "labels_path": fets_path,
-        }
-        update_row_with_dict(report, report_data, index)
-        return report
-
-    def __report_failure(
-        self, index: Union[str, int], report: pd.DataFrame
-    ) -> pd.DataFrame:
-        prev_data_path = report.loc[index]["data_path"]
+    def __report_failure(self):
 
         with open(self.prep.stderr_log, "r") as f:
             msg = f.read()
 
-        report_data = {
-            "status": -self.status_code,
-            "comment": msg,
-            "data_path": prev_data_path,
-            "labels_path": "",
-        }
-        update_row_with_dict(report, report_data, index)
-        return report
+        raise TypeError(msg)

@@ -1,6 +1,6 @@
 from .row_stage import RowStage
 from .CreateCSVForDICOMs import CSVCreator
-from .utils import update_row_with_dict, get_id_tp
+from .utils import get_id_tp
 import pandas as pd
 from typing import Union, Tuple
 import os
@@ -52,9 +52,7 @@ class AddToCSV(RowStage):
         print(f"{is_valid=}")
         return is_valid
 
-    def execute(
-        self, index: Union[str, int], report: pd.DataFrame = None
-    ) -> Tuple[pd.DataFrame, bool]:
+    def execute(self, index: Union[str, int]) -> Tuple[pd.DataFrame, bool]:
         """Adds valid cases to the data csv that is used for later processing
         Invalid cases are flagged in the report
 
@@ -90,8 +88,7 @@ class AddToCSV(RowStage):
                 "data_path": tp_path,
                 "labels_path": "",
             }
-            update_row_with_dict(report, report_data, index)
-            return report, False
+            raise
 
         missing = self.csv_processor.subject_timepoint_missing_modalities
         extra = self.csv_processor.subject_timepoint_extra_modalities
@@ -116,15 +113,10 @@ class AddToCSV(RowStage):
                 report_data["comment"] += "\n\n" + msg
                 success = False
 
-        if success:
-            pass
-            # shutil.rmtree(tp_path)
-        else:
-            shutil.rmtree(tp_out_path, ignore_errors=True)
-
         report_data["comment"] = report_data["comment"].strip()
-
-        update_row_with_dict(report, report_data, index)
+        if not success:
+            shutil.rmtree(tp_out_path, ignore_errors=True)
+            raise TypeError(report_data["comment"])
 
         self.csv_processor.write()
 

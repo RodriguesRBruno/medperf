@@ -12,7 +12,7 @@ from airflow.models.dag import DAG
 from utils.utils import YESTERDAY
 from utils.container_factory import ContainerOperatorFactory
 from utils import rano_task_ids, dag_ids, dag_tags
-from utils.subject_datasets import REPORT_DATASET
+from utils.subject_datasets import SETUP_DATASET
 
 
 with DAG(
@@ -28,8 +28,8 @@ with DAG(
 ) as dag:
 
     report = ContainerOperatorFactory.get_operator(
-        "create_report",
-        task_display_name="Create Report Stage",
-        task_id=rano_task_ids.CREATE_REPORT,
-        outlets=[REPORT_DATASET],
+        "initial_setup",
+        task_display_name="Initial Setup Stage",
+        task_id=rano_task_ids.INITIAL_SETUP,
+        outlets=[SETUP_DATASET],
     )

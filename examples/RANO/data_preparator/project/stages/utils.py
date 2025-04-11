@@ -7,9 +7,8 @@ from pathlib import Path
 import hashlib
 import yaml
 import pandas as pd
-from filelock import SoftFileLock
 
-from .env_vars import DATA_DIR, REPORT_PATH, REPORT_LOCK, DATA_SUBDIR
+from .env_vars import DATA_DIR, DATA_SUBDIR
 from .mlcube_constants import (
     OUT_CSV,
     AUX_FILES_PATH,
@@ -17,6 +16,8 @@ from .mlcube_constants import (
     MANUAL_REVIEW_PATH,
     UNDER_REVIEW_PATH,
     TUMOR_EXTRACTION_REVIEW_PATH,
+    REPORT_FILE,
+    CHANGED_VOXELS_FILE,
 )
 
 
@@ -122,23 +123,16 @@ def unnormalize_path(path: str, parent: str) -> str:
     return os.path.join(parent, path)
 
 
-def _really_load_report(report_path: str):
-    with open(report_path, "r") as f:
-        report_data = yaml.safe_load(f)
+def load_report(subject_id: str, timepoint: str) -> pd.DataFrame:
+    report_path = get_report_yaml_filepath(subject_id, timepoint)
+
+    try:
+        with open(report_path, "r") as f:
+            report_data = yaml.safe_load(f)
+    except FileNotFoundError:
+        report_data = None
 
     report_df = pd.DataFrame(report_data)
-    return report_df
-
-
-def load_report(report_path: str = None, use_lock: bool = False) -> pd.DataFrame:
-    report_path = report_path or REPORT_PATH
-
-    if not use_lock:
-        with SoftFileLock(REPORT_LOCK) as lock:
-            report_df = _really_load_report(report_path)
-    else:
-        report_df = _really_load_report(report_path)
-
     return report_df
 
 
@@ -157,42 +151,15 @@ def normalize_report_paths(report: DataFrame) -> DataFrame:
     return report
 
 
-def _really_write_report(filepath, report_dict):
+def write_report(report: DataFrame, subject_id: str, timepoint: str):
+    filepath = get_report_yaml_filepath(subject_id, timepoint)
+    report_dict = report.to_dict()
+
+    # Use a temporary file to avoid quick writes collisions and corruption
     temp_path = Path(filepath).parent / ".report.yaml"
     with open(temp_path, "w") as f:
         yaml.dump(report_dict, f)
     os.rename(temp_path, filepath)
-
-
-def write_report(report: DataFrame, filepath: str = None, use_lock: bool = False):
-    filepath = filepath or REPORT_PATH
-    report = normalize_report_paths(report)
-    report_dict = report.to_dict()
-
-    # Use a temporary file to avoid quick writes collisions and corruption
-    if not use_lock:
-        with SoftFileLock(REPORT_LOCK) as lock:
-            _really_write_report(filepath, report_dict)
-    else:
-        _really_write_report(filepath, report_dict)
-
-
-def update_row_with_dict(df, d, idx):  # TODO remove df arg everywhere
-    from time import perf_counter
-
-    print(f"Attempting to update report...")
-    start = perf_counter()
-
-    with SoftFileLock(REPORT_LOCK, timeout=-1) as lock:
-        df = load_report(use_lock=True)
-
-        for key in d.keys():
-            df.loc[idx, key] = d.get(key)
-
-            write_report(df, REPORT_PATH, use_lock=True)
-
-    end = perf_counter()
-    print(f"Updated report after {round(end-start,2)}s")
 
 
 def get_id_tp(index: str):
@@ -261,6 +228,13 @@ class MockTqdm(tqdm):
 
 def get_aux_files_dir(subject_subdir):
     return os.path.join(DATA_DIR, AUX_FILES_PATH, subject_subdir)
+
+
+def get_report_yaml_filepath(subject_id, timepoint):
+    yaml_dir = os.path.join(
+        DATA_DIR, AUX_FILES_PATH, os.path.join(subject_id, timepoint)
+    )
+    return os.path.join(yaml_dir, REPORT_FILE)
 
 
 def get_data_csv_filepath(subject_subdir):
@@ -338,3 +312,9 @@ def delete_empty_directory(path_to_directory: str):
         inside_this_dir = os.listdir(path_to_directory)
         if not inside_this_dir:
             shutil.rmtree(path_to_directory)
+
+
+def get_changed_voxels_file(subject_id, timepoint):
+    return os.path.join(
+        DATA_DIR, AUX_FILES_PATH, subject_id, timepoint, CHANGED_VOXELS_FILE
+    )

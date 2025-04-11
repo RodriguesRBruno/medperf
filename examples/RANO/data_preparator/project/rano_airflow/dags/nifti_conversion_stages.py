@@ -11,7 +11,7 @@ from utils.utils import YESTERDAY
 from utils.container_factory import ContainerOperatorFactory
 from utils import rano_task_ids, dag_ids, dag_tags
 from utils.subject_datasets import (
-    REPORT_DATASET,
+    SETUP_DATASET,
     SUBJECT_TIMEPOINT_LIST,
     SUBJECT_NIFTI_DATASETS,
 )
@@ -26,7 +26,7 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
         dag_id=dag_id,
         dag_display_name=f"NIfTI Conversion - {subject_slash_timepoint}",
         max_active_runs=1,
-        schedule=[REPORT_DATASET],
+        schedule=[SETUP_DATASET],
         start_date=YESTERDAY,
         is_paused_upon_creation=False,
         tags=[subject_slash_timepoint, dag_tags.NIFTI_CONVERSION],
