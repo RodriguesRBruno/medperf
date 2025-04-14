@@ -11,8 +11,8 @@ NIFTI_POOL = Pool.create_or_update_pool(
 
 EXTRACTION_POOL = Pool.create_or_update_pool(
     name="Brain/Tumor Extraction Pool",
-    slots=os.getenv("EXTRACTION_POOL_SLOTS") or 4,
+    slots=os.getenv("EXTRACTION_POOL_SLOTS") or 5,
     description="Limits the execution of Brain Extraction and Tumor Extraction tasks to the number assigned to the EXTRACTION_POOL_SLOTS environment variable. "
-    "If the variable is not set, the default limit is 4.",
+    "If the variable is not set, the default limit is 5.",
     include_deferred=False,
 )

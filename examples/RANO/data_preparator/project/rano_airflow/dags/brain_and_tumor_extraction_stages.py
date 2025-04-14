@@ -42,6 +42,7 @@ for subject_slash_timepoint in SUBJECT_TIMEPOINT_LIST:
             task_display_name="Extract Brain",
             task_id=rano_task_ids.EXTRACT_BRAIN,
             pool=EXTRACTION_POOL.pool,
+            pool_slots=3,
         )
         tumor_extraction_stage = ContainerOperatorFactory.get_operator(
             "extract_tumor",
