@@ -3,8 +3,7 @@ from typing import List, Optional, Union
 from medperf.commands.association.utils import get_user_associations
 from pydantic import Field
 
-from medperf.entities.interface import Entity
-from medperf.entities.schemas import DeployableSchema
+from medperf.entities.benchmark_step import BenchmarkStep
 from medperf.exceptions import InvalidEntityError
 import medperf.config as config
 from medperf.comms.entity_resources import resources
@@ -14,7 +13,7 @@ from medperf.containers.parsers import load_parser
 from medperf.utils import generate_tmp_path
 
 
-class Cube(Entity, DeployableSchema):
+class Cube(BenchmarkStep):
     """
     Class representing an MLCube Container
 
@@ -31,10 +30,6 @@ class Cube(Entity, DeployableSchema):
     image_tarball_url: Optional[str]
     image_tarball_hash: Optional[str]
     image_hash: Optional[str]
-    additional_files_tarball_url: Optional[str] = Field(None, alias="tarball_url")
-    additional_files_tarball_hash: Optional[str] = Field(None, alias="tarball_hash")
-    metadata: dict = {}
-    user_metadata: dict = {}
 
     @staticmethod
     def get_type():
@@ -66,15 +61,10 @@ class Cube(Entity, DeployableSchema):
 
         self.cube_path = os.path.join(self.path, config.cube_filename)
         self.params_path = None
-        self.additiona_files_folder_path = None
         self.params_path = os.path.join(
             self.path, config.workspace_path, config.params_filename
         )
-        self.additiona_files_folder_path = os.path.join(
-            self.path, config.additional_path
-        )
         self._parser = None
-        self._runner = None
 
     @property
     def parser(self):
@@ -89,8 +79,8 @@ class Cube(Entity, DeployableSchema):
         return self._runner
 
     @property
-    def local_id(self):
-        return self.name
+    def config_file(self):
+        return self.git_mlcube_url
 
     @staticmethod
     def remote_prefilter(filters: dict):
@@ -107,30 +97,6 @@ class Cube(Entity, DeployableSchema):
             comms_fn = config.comms.get_user_cubes
 
         return comms_fn
-
-    @classmethod
-    def get(
-        cls,
-        cube_uid: Union[str, int],
-        local_only: bool = False,
-        valid_only: bool = True,
-    ) -> "Cube":
-        """Retrieves and creates a Cube instance from the comms. If cube already exists
-        inside the user's computer then retrieves it from there.
-
-        Args:
-            valid_only: if to raise an error in case of invalidated Cube
-            cube_uid (str): UID of the cube.
-
-        Returns:
-            Cube : a Cube instance with the retrieved data.
-        """
-
-        cube = super().get(cube_uid, local_only)
-        if not cube.is_valid and valid_only:
-            raise InvalidEntityError("The requested container is marked as INVALID.")
-        cube.download_config_files()
-        return cube
 
     def download_mlcube(self):
         url = self.git_mlcube_url
@@ -244,13 +210,3 @@ class Cube(Entity, DeployableSchema):
         associations = [a for a in associations if a["model_mlcube"] == mlcube_uid]
 
         return associations
-
-    def display_dict(self):
-        return {
-            "UID": self.identifier,
-            "Name": self.name,
-            "Config File": self.git_mlcube_url,
-            "State": self.state,
-            "Created At": self.created_at,
-            "Registered": self.is_registered,
-        }

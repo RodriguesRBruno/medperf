@@ -65,9 +65,9 @@ def benchmark_detail_ui(
     current_user: bool = Depends(check_user_ui),
 ):
     benchmark = Benchmark.get(benchmark_id)
-    data_preparation_container = Cube.get(cube_uid=benchmark.data_preparation_mlcube)
-    reference_model_container = Cube.get(cube_uid=benchmark.reference_model_mlcube)
-    metrics_container = Cube.get(cube_uid=benchmark.data_evaluator_mlcube)
+    data_preparation_container = Cube.get(uid=benchmark.data_preparation_mlcube)
+    reference_model_container = Cube.get(uid=benchmark.reference_model_mlcube)
+    metrics_container = Cube.get(uid=benchmark.data_evaluator_mlcube)
     datasets_associations = []
     models_associations = []
     datasets = {}

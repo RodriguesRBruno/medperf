@@ -56,9 +56,9 @@ def container_detail_ui(
     container_id: int,
     current_user: bool = Depends(check_user_ui),
 ):
-    container = Cube.get(cube_uid=container_id, valid_only=False)
+    container = Cube.get(uid=container_id, valid_only=False)
 
-    benchmark_assocs = Cube.get_benchmarks_associations(mlcube_uid=container_id)
+    benchmark_assocs = Cube.get_benchmarks_associations(uid=container_id)
 
     benchmark_associations = {}
     for assoc in benchmark_assocs:

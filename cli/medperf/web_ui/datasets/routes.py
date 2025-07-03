@@ -68,7 +68,7 @@ def dataset_detail_ui(
     dataset = Dataset.get(dataset_id)
     dataset.read_report()
     dataset.read_statistics()
-    prep_cube = Cube.get(cube_uid=dataset.data_preparation_mlcube)
+    prep_cube = Cube.get(uid=dataset.data_preparation_mlcube)
     benchmark_assocs = Dataset.get_benchmarks_associations(dataset_uid=dataset_id)
     benchmark_associations = {}
     for assoc in benchmark_assocs:
@@ -111,7 +111,7 @@ def dataset_detail_ui(
         if assoc["approval_status"] != "APPROVED":
             continue  # if association is not approved we cannot list its models
         models_uids = Benchmark.get_models_uids(benchmark_uid=assoc["benchmark"])
-        models = [Cube.get(cube_uid=model_uid) for model_uid in models_uids]
+        models = [Cube.get(uid=model_uid) for model_uid in models_uids]
         benchmark_models[assoc["benchmark"]] = models
         for model in models + [
             valid_benchmarks[assoc["benchmark"]].reference_model_mlcube
@@ -382,7 +382,7 @@ def export_dataset_ui(
     dataset = Dataset.get(dataset_id)
     dataset.read_report()
     dataset.read_statistics()
-    prep_cube = Cube.get(cube_uid=dataset.data_preparation_mlcube)
+    prep_cube = Cube.get(uid=dataset.data_preparation_mlcube)
     dataset_is_operational = dataset.state == "OPERATION"
     dataset_is_prepared = dataset.submitted_as_prepared or dataset.is_ready()
     return templates.TemplateResponse(
