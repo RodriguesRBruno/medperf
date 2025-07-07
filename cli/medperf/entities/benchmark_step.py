@@ -7,7 +7,6 @@ from medperf.entities.interface import Entity
 from medperf.entities.schemas import DeployableSchema
 from medperf.exceptions import InvalidEntityError
 import medperf.config as config
-from medperf.account_management import get_medperf_user_data
 
 
 class BenchmarkStep(Entity, DeployableSchema):
@@ -101,15 +100,15 @@ class BenchmarkStep(Entity, DeployableSchema):
         local_only: bool = False,
         valid_only: bool = True,
     ) -> "BenchmarkStep":
-        """Retrieves and creates a Cube instance from the comms. If cube already exists
+        """Retrieves and creates a BenchmarkStep instance from the comms. If cube already exists
         inside the user's computer then retrieves it from there.
 
         Args:
-            valid_only: if to raise an error in case of invalidated Cube
+            valid_only: if to raise an error in case of invalidated BenchmarkStep
             cube_uid (str): UID of the cube.
 
         Returns:
-            Cube : a Cube instance with the retrieved data.
+            BenchmarkStep : a BenchmarkStep instance with the retrieved data.
         """
 
         step = super().get(uid, local_only)
