@@ -113,15 +113,6 @@ class Cube(BenchmarkStep):
             self.params_path = path
             self.parameters_hash = file_hash
 
-    def download_additional(self):
-        url = self.additional_files_tarball_url
-        if url:
-            path, file_hash = resources.get_cube_additional(
-                url, self.path, self.additional_files_tarball_hash
-            )
-            self.additiona_files_folder_path = path
-            self.additional_files_tarball_hash = file_hash
-
     def download_config_files(self):
         try:
             self.download_mlcube()

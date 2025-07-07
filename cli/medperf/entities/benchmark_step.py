@@ -3,6 +3,7 @@ from typing import List, Optional, Union
 from pydantic import Field
 from abc import abstractmethod
 
+from medperf.comms.entity_resources import resources
 from medperf.entities.interface import Entity
 from medperf.entities.schemas import DeployableSchema
 from medperf.exceptions import InvalidEntityError
@@ -126,3 +127,12 @@ class BenchmarkStep(Entity, DeployableSchema):
             "Created At": self.created_at,
             "Registered": self.is_registered,
         }
+
+    def download_additional(self):
+        url = self.additional_files_tarball_url
+        if url:
+            path, file_hash = resources.get_cube_additional(
+                url, self.path, self.additional_files_tarball_hash
+            )
+            self.additiona_files_folder_path = path
+            self.additional_files_tarball_hash = file_hash
