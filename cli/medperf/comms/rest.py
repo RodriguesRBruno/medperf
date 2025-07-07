@@ -324,6 +324,19 @@ class REST(Comms):
         error_msg = "Could not retrieve training experiment ca"
         return self.__get(url, error_msg)
 
+    def get_workflow_metadata(self, workflow_uid: int) -> dict:
+        """Retrieves metadata about the specified workflow
+
+        Args:
+            workflow_uid (int): UID of the desired workflow.
+
+        Returns:
+            dict: Dictionary containing url and hashes for the workflow files
+        """
+        url = f"{self.server_url}/workflows/{workflow_uid}/"
+        error_msg = "Could not retrieve workflow"
+        return self.__get(url, error_msg)
+
     # get list
     def get_benchmarks(self, filters={}) -> List[dict]:
         """Retrieves all benchmarks in the platform.
@@ -405,6 +418,16 @@ class REST(Comms):
         error_msg = "Could not retrieve training events"
         return self.__get_list(url, filters=filters, error_msg=error_msg)
 
+    def get_workflows(self, filters={}) -> List[dict]:
+        """Retrieves all workflows
+
+        Returns:
+            List[dict]: List of workflows
+        """
+        url = f"{self.server_url}/workflows/"
+        error_msg = "Could not retrieve workflows"
+        return self.__get_list(url, filters=filters, error_msg=error_msg)
+
     # get user list
     def get_user_cubes(self, filters={}) -> List[dict]:
         """Retrieves metadata from all cubes registered by the user
@@ -484,6 +507,16 @@ class REST(Comms):
         """
         url = f"{self.server_url}/me/training/events/"
         error_msg = "Could not retrieve user training events"
+        return self.__get_list(url, filters=filters, error_msg=error_msg)
+
+    def get_user_workflows(self, filters={}) -> dict:
+        """Retrieves all workflows registered by the user
+
+        Returns:
+            dict: dictionary with the contents of each result registration query
+        """
+        url = f"{self.server_url}/me/workflows/"
+        error_msg = "Could not retrieve user workflows"
         return self.__get_list(url, filters=filters, error_msg=error_msg)
 
     # get user associations list
@@ -653,6 +686,19 @@ class REST(Comms):
         url = f"{self.server_url}/training/events/"
         error_msg = "could not upload training event"
         return self.__post(url, json=trainnig_event_dict, error_msg=error_msg)
+
+    def upload_workflow(self, workflow_dict: dict) -> int:
+        """Uploads a new workflow to the server.
+
+        Args:
+            workflow_dict (dict): workflow_data to be uploaded
+
+        Returns:
+            int: UID of newly created workflow
+        """
+        url = f"{self.server_url}/workflows/"
+        error_msg = "could not upload workflow"
+        return self.__post(url, json=workflow_dict, error_msg=error_msg)
 
     # Association creation
     def associate_benchmark_dataset(
@@ -869,6 +915,19 @@ class REST(Comms):
         """
         url = f"{self.server_url}/mlcubes/{mlcube_id}/datasets/"
         error_msg = "Could not get mlcube datasets"
+        return self.__get_list(url, filters=filters, error_msg=error_msg)
+
+    def get_workflow_datasets(self, workflow_id: int, filters={}) -> dict:
+        """Retrieves all datasets that have the specified workflow as the prep workflow
+
+        Args:
+            workflow_id (int): workflow ID to retrieve datasets from
+
+        Returns:
+            dict: dictionary with the contents of each dataset
+        """
+        url = f"{self.server_url}/workflows/{workflow_id}/datasets/"
+        error_msg = "Could not get workflow datasets"
         return self.__get_list(url, filters=filters, error_msg=error_msg)
 
     def get_training_datasets_associations(

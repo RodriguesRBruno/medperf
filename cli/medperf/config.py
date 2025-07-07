@@ -74,6 +74,7 @@ training_folder = "training"
 aggregators_folder = "aggregators"
 cas_folder = "cas"
 training_events_folder = "training_events"
+workflows_folder = "workflows"
 
 default_base_storage = str(Path.home().resolve() / ".medperf")
 
@@ -169,6 +170,7 @@ agg_file = "agg-info.yaml"
 ca_file = "ca-info.yaml"
 training_event_file = "event.yaml"
 cube_metadata_filename = "mlcube-meta.yaml"
+workflow_metadata_filename = "workflow-meta.yaml"
 log_file = "medperf.log"
 webui_log_file = "medperf_webui.log"
 log_package_file = "medperf_logs.tar.gz"
