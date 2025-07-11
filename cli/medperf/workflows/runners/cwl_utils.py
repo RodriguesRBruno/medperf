@@ -268,14 +268,16 @@ class CWLExecutionMonitor:
         self.report_file = report_file
         if self.report_file:
             report_dir = os.path.normpath(os.path.dirname(self.report_file))
-            if report_dir:
+            if report_dir and not os.path.exists(report_dir):
                 os.makedirs(report_dir, exist_ok=True)
-        self.update_report()
+
+            if not os.path.exists(self.report_file):
+                self.update_report()
 
     def monitor(self):
         try:
             self._run_monitor()
-        except Exception as e:
+        except (Exception, KeyboardInterrupt) as e:
             self.update_report()
             raise e
 
