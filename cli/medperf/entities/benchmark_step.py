@@ -63,6 +63,11 @@ class BenchmarkStep(Entity, DeployableSchema):
 
     @property
     @abstractmethod
+    def parser(self):
+        pass
+
+    @property
+    @abstractmethod
     def runner(self):
         pass
 

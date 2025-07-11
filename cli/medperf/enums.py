@@ -14,9 +14,7 @@ class Status(Enum):
     REJECTED = "REJECTED"
 
 
-class WorkflowTypes(str, Enum):
-    CWL = "cwl"
-
+class CaseInsensitiveEnum(str, Enum):
     @classmethod
     def _missing_(cls, value):
         """
@@ -28,3 +26,12 @@ class WorkflowTypes(str, Enum):
             if member.value == value:
                 return member
         return None
+
+
+class WorkflowTypes(CaseInsensitiveEnum):
+    CWL = "cwl"
+
+
+class ContainerRuntimes(CaseInsensitiveEnum):
+    docker = "docker"
+    singularity = "singularity"

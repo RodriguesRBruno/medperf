@@ -44,3 +44,7 @@ class CleanExit(MedperfException):
 
 class InvalidContainerSpec(MedperfException):
     """Raised when container config file is invalid"""
+
+
+class InvalidWorkflowSpec(MedperfException):
+    """Raised when workflow config file is invalid"""
