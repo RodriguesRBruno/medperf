@@ -478,16 +478,18 @@ def check_for_updates() -> None:
 
 
 class spawn_and_kill:
-    def __init__(self, cmd, timeout=None, *args, **kwargs):
+    def __init__(self, cmd, timeout=None, logfile: str = None, *args, **kwargs):
         self.cmd = cmd
         self.timeout = timeout
+        self.logfile = logfile
         self._args = args
         self._kwargs = kwargs
         self.proc: spawn
         self.exception_occurred = False
+        self._file_out = None
 
     @staticmethod
-    def spawn(*args, **kwargs):
+    def spawn(*args, **kwargs) -> spawn:
         return spawn(*args, **kwargs)
 
     def killpg(self):
@@ -497,6 +499,14 @@ class spawn_and_kill:
         self.proc = self.spawn(
             self.cmd, timeout=self.timeout, *self._args, **self._kwargs
         )
+        if self.logfile is not None:
+            full_logpath = os.path.normpath(self.logfile)
+            logdir = os.path.dirname(full_logpath)
+            if logdir:
+                os.makedirs(logdir, exist_ok=True)
+            self._file_out = open(full_logpath, "wb")
+            self.proc.logfile = self._file_out
+
         self.pid = self.proc.pid
         return self
 
@@ -509,6 +519,9 @@ class spawn_and_kill:
             # - pexpect.TIMEOUT
             logging.info(f"Killing ancestor processes because of exception: {exc_val=}")
             self.killpg()
+
+        if self._file_out is not None:
+            self._file_out.close()
 
         self.proc.close()
         self.proc.wait()
