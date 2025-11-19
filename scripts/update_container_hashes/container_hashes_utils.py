@@ -45,7 +45,7 @@ def get_container_info(
     else:
         content = req_session.get(download_link).content
 
-    content_hash = hashlib.sha256(content).hexdigest()
+    content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
     hashes_matched = content_hash == expected_hash
     if not hashes_matched:
         print(
