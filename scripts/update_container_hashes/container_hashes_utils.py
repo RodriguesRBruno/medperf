@@ -74,7 +74,18 @@ def get_docker_hash(
         return new_hash
     except APIError:
         if current_try > MAX_TRIES:
-            raise
+            try:
+                image_info = docker_client.images.pull(docker_info_dict["image"])
+                new_hash = image_info.id
+                docker_client.images.remove(image=image_info.id, force=True)
+                return new_hash
+            except docker.errors.ImageNotFound:
+                print(
+                    f"Image {docker_info_dict['image']} (Container {container_id}) no longer exists."
+                )
+                return None
+            except APIError:
+                raise
         print(
             f"An error happened when attempting to get registry data from "
             f"Container {container_id}. Will try again {MAX_TRIES - current_try} times..."
