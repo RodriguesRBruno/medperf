@@ -143,6 +143,7 @@ def get_container_hashes(
                 )
             else:
                 parameters_config = {}
+                parameters_hash_matched = None
 
             new_hash = get_docker_hash(
                 docker_client=docker_client,
