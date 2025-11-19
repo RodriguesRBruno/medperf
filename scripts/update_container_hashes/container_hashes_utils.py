@@ -36,7 +36,7 @@ def get_container_info(
                 content = f.read()
 
             try:
-                os.remove(synapse_tmp_file)
+                os.remove(synapse_tmp_file.path)
             except OSError:
                 print(
                     f"Failed to delete local Synapse file {synapse_tmp_file.path}. "
