@@ -36,7 +36,7 @@ def get_container_info(
                 content = f.read()
 
             try:
-                os.remove(synapse_tmp_file)
+                os.remove(synapse_tmp_file.path)
             except OSError:
                 print(
                     f"Failed to delete local Synapse file {synapse_tmp_file.path}. "
@@ -45,7 +45,7 @@ def get_container_info(
     else:
         content = req_session.get(download_link).content
 
-    content_hash = hashlib.sha256(content).hexdigest()
+    content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
     hashes_matched = content_hash == expected_hash
     if not hashes_matched:
         print(
@@ -74,7 +74,18 @@ def get_docker_hash(
         return new_hash
     except APIError:
         if current_try > MAX_TRIES:
-            raise
+            try:
+                image_info = docker_client.images.pull(docker_info_dict["image"])
+                new_hash = image_info.id
+                docker_client.images.remove(image=image_info.id, force=True)
+                return new_hash
+            except docker.errors.ImageNotFound:
+                print(
+                    f"Image {docker_info_dict['image']} (Container {container_id}) no longer exists."
+                )
+                return None
+            except APIError:
+                raise
         print(
             f"An error happened when attempting to get registry data from "
             f"Container {container_id}. Will try again {MAX_TRIES - current_try} times..."
@@ -143,6 +154,7 @@ def get_container_hashes(
                 )
             else:
                 parameters_config = {}
+                parameters_hash_matched = None
 
             new_hash = get_docker_hash(
                 docker_client=docker_client,
